@@ -78,33 +78,49 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
     let base64_wasm = base64::encode(&wasm_binary);
     let data_url = format!("data:application/wasm;base64,{}", base64_wasm);
 
-    // Generate JavaScript that loads and instantiates the WASM module
-    // and exports its functions to the global scope
+    // Generate JavaScript that decodes base64 and instantiates the WASM module
+    // Using .then() instead of async/await for better compatibility
     let js_code = format!(
         r#"
-(async function() {{
+(function() {{
     try {{
-        const response = await fetch('{}');
-        const bytes = await response.arrayBuffer();
-        const module = await WebAssembly.instantiate(bytes);
+        console.log('WASM: Starting module load');
 
-        // Export all WASM functions to window
-        if (module.instance && module.instance.exports) {{
-            for (const [name, func] of Object.entries(module.instance.exports)) {{
-                if (typeof func === 'function') {{
-                    window[name] = func;
-                    console.log('WASM: Exported function', name);
-                }}
-            }}
+        // Decode base64 directly
+        const base64 = '{}';
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {{
+            bytes[i] = binaryString.charCodeAt(i);
         }}
 
-        console.log('WASM module loaded successfully');
+        console.log('WASM: Decoded ' + bytes.length + ' bytes, instantiating...');
+
+        WebAssembly.instantiate(bytes).then(function(module) {{
+            console.log('WASM: Module instantiated');
+
+            // Export all WASM functions to window
+            if (module.instance && module.instance.exports) {{
+                for (const name in module.instance.exports) {{
+                    const func = module.instance.exports[name];
+                    if (typeof func === 'function') {{
+                        window[name] = func;
+                        console.log('WASM: Exported function ' + name);
+                    }}
+                }}
+            }}
+
+            console.log('WASM module loaded successfully');
+        }}).catch(function(e) {{
+            console.error('WASM instantiation error:', e);
+        }});
+
     }} catch (e) {{
         console.error('WASM loading error:', e);
     }}
 }})();
 "#,
-        data_url
+        base64_wasm
     );
 
     Ok(js_code)

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple WASM Test</title>
+</head>
+<body>
+    <h1>Simple WASM Test</h1>
+    <div id="result">Loading...</div>
+
+    <script>
+        console.log("Step 1: Page loaded");
+        document.getElementById('result').innerHTML = "Step 1: JavaScript works!";
+    </script>
+
+    <!-- Very simple WASM module -->
+    <script type="application/wasm">
+        (module
+          (func $add (param $a i32) (param $b i32) (result i32)
+            local.get $a
+            local.get $b
+            i32.add)
+          (export "add" (func $add)))
+    </script>
+
+    <script>
+        console.log("Step 2: After WASM script tag");
+        setTimeout(function() {
+            console.log("Step 3: In setTimeout");
+            if (typeof window.add === 'function') {
+                console.log("Step 4: add function found");
+                const result = window.add(2, 3);
+                console.log("Step 5: Result = " + result);
+                document.getElementById('result').innerHTML = "SUCCESS: 2 + 3 = " + result;
+            } else {
+                console.log("Step 4: add function NOT found");
+                document.getElementById('result').innerHTML = "FAIL: add function not exported";
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
