@@ -78,15 +78,15 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
     let base64_wasm = base64::encode(&wasm_binary);
     let data_url = format!("data:application/wasm;base64,{}", base64_wasm);
 
-    // Generate JavaScript that decodes base64 and instantiates the WASM module
-    // Using .then() instead of async/await for better compatibility
+    // Generate JavaScript that uses Blob URL to load WASM
+    // This avoids issues with Uint8Array and WebAssembly.instantiate()
     let js_code = format!(
         r#"
 (function() {{
     try {{
         console.log('WASM: Starting module load');
 
-        // Decode base64 directly
+        // Create binary data from base64
         const base64 = '{}';
         const binaryString = atob(base64);
         const bytes = new Uint8Array(binaryString.length);
@@ -94,29 +94,45 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
             bytes[i] = binaryString.charCodeAt(i);
         }}
 
-        console.log('WASM: Decoded ' + bytes.length + ' bytes, instantiating...');
+        console.log('WASM: Creating Blob from ' + bytes.length + ' bytes');
 
-        WebAssembly.instantiate(bytes).then(function(module) {{
-            console.log('WASM: Module instantiated');
+        // Create a Blob and Blob URL
+        const blob = new Blob([bytes], {{ type: 'application/wasm' }});
+        const blobUrl = URL.createObjectURL(blob);
 
-            // Export all WASM functions to window
-            if (module.instance && module.instance.exports) {{
-                for (const name in module.instance.exports) {{
-                    const func = module.instance.exports[name];
-                    if (typeof func === 'function') {{
-                        window[name] = func;
-                        console.log('WASM: Exported function ' + name);
+        console.log('WASM: Fetching from Blob URL...');
+
+        // Fetch from Blob URL (this is how most WASM is loaded)
+        fetch(blobUrl)
+            .then(function(response) {{ return response.arrayBuffer(); }})
+            .then(function(buffer) {{
+                console.log('WASM: Instantiating module...');
+                return WebAssembly.instantiate(buffer);
+            }})
+            .then(function(result) {{
+                console.log('WASM: Module instantiated successfully');
+                URL.revokeObjectURL(blobUrl);
+
+                // Export all WASM functions to window
+                if (result.instance && result.instance.exports) {{
+                    for (const name in result.instance.exports) {{
+                        const func = result.instance.exports[name];
+                        if (typeof func === 'function') {{
+                            window[name] = func;
+                            console.log('WASM: Exported function ' + name);
+                        }}
                     }}
                 }}
-            }}
 
-            console.log('WASM module loaded successfully');
-        }}).catch(function(e) {{
-            console.error('WASM instantiation error:', e);
-        }});
+                console.log('WASM module loaded successfully');
+            }})
+            .catch(function(e) {{
+                console.error('WASM loading error:', e);
+                URL.revokeObjectURL(blobUrl);
+            }});
 
     }} catch (e) {{
-        console.error('WASM loading error:', e);
+        console.error('WASM error:', e);
     }}
 }})();
 "#,

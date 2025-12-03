@@ -279,6 +279,7 @@ impl ScriptOrigin {
         } else if type_ == ScriptType::Wasm {
             // Compile WAT to JavaScript that loads the WASM module
             use crate::wasm_compiler;
+            log::warn!("DEBUG: Processing inline WASM script!");
             let source_str = text.str().to_string();
             match wasm_compiler::compile_wat_to_js(&source_str, url.as_str()) {
                 Ok(js_code) => {
@@ -338,6 +339,7 @@ impl ScriptOrigin {
         } else if type_ == ScriptType::Wasm {
             // Compile WAT to JavaScript that loads the WASM module
             use crate::wasm_compiler;
+            log::warn!("DEBUG: Processing inline WASM script!");
             let source_str = text.str().to_string();
             match wasm_compiler::compile_wat_to_js(&source_str, url.as_str()) {
                 Ok(js_code) => {

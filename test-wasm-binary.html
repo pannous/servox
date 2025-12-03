@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Binary WASM Test</title>
+</head>
+<body>
+    <h1>Binary WASM Test</h1>
+    <div id="result">Testing...</div>
+
+    <script>
+        console.log("Loading WASM from binary file...");
+        
+        fetch('test-external.wasm')
+            .then(response => response.arrayBuffer())
+            .then(bytes => WebAssembly.instantiate(bytes))
+            .then(result => {
+                console.log("WASM loaded successfully!");
+                if (result.instance.exports.subtract) {
+                    window.subtract = result.instance.exports.subtract;
+                    const val = window.subtract(10, 3);
+                    document.getElementById('result').innerHTML = 
+                        'SUCCESS: subtract(10, 3) = ' + val;
+                    console.log("Result:", val);
+                }
+            })
+            .catch(err => {
+                console.error("WASM error:", err);
+                document.getElementById('result').innerHTML = 'ERROR: ' + err;
+            });
+    </script>
+</body>
+</html>
