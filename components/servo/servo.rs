@@ -93,6 +93,7 @@ mod media_platform {
     }
 
     use servo_media_gstreamer::GStreamerBackend;
+    use servo_media_dummy;
 
     use super::ServoMedia;
 
@@ -112,8 +113,9 @@ mod media_platform {
             ) {
                 Ok(b) => b,
                 Err(e) => {
-                    log::error!("Error initializing GStreamer: {:?}", e);
-                    std::process::exit(1);
+                    log::warn!("Error initializing GStreamer: {:?}", e);
+                    log::warn!("Media playback will be unavailable. Run `./mach package` to setup GStreamer plugins.");
+                    Box::new(servo_media_dummy::DummyBackend {})
                 },
             }
         });
