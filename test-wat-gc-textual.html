@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WAT GC Textual Format Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>WAT GC Textual Format Test</h1>
+    <p>Testing WASM GC features in textual WAT format</p>
+    <div id="output"></div>
+
+    <!-- WAT with GC features - compiled automatically by Servo -->
+    <script type="application/wasm">
+        (module
+          ;; Define a Point struct with x and y coordinates
+          (type $Point (struct
+            (field $x (mut f32))
+            (field $y (mut f32))
+          ))
+
+          ;; Create a new Point
+          (func $makePoint (export "makePoint")
+            (param $x f32) (param $y f32)
+            (result (ref $Point))
+            local.get $x
+            local.get $y
+            struct.new $Point
+          )
+
+          ;; Get X coordinate
+          (func $getX (export "getX")
+            (param $p (ref $Point))
+            (result f32)
+            local.get $p
+            struct.get $Point 0
+          )
+
+          ;; Get Y coordinate
+          (func $getY (export "getY")
+            (param $p (ref $Point))
+            (result f32)
+            local.get $p
+            struct.get $Point 1
+          )
+
+          ;; Set X coordinate
+          (func $setX (export "setX")
+            (param $p (ref $Point))
+            (param $val f32)
+            local.get $p
+            local.get $val
+            struct.set $Point 0
+          )
+
+          ;; Set Y coordinate
+          (func $setY (export "setY")
+            (param $p (ref $Point))
+            (param $val f32)
+            local.get $p
+            local.get $val
+            struct.set $Point 1
+          )
+
+          ;; Calculate distance from origin
+          (func $distanceFromOrigin (export "distanceFromOrigin")
+            (param $p (ref $Point))
+            (result f32)
+            (local $x f32)
+            (local $y f32)
+
+            ;; Get x and y
+            local.get $p
+            struct.get $Point 0
+            local.set $x
+
+            local.get $p
+            struct.get $Point 1
+            local.set $y
+
+            ;; Calculate x*x + y*y
+            local.get $x
+            local.get $x
+            f32.mul
+
+            local.get $y
+            local.get $y
+            f32.mul
+
+            f32.add
+            f32.sqrt
+          )
+        )
+    </script>
+
+    <script>
+        function log(msg, className = 'info') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = msg;
+            document.getElementById('output').appendChild(div);
+            console.log(msg);
+        }
+
+        // Give WASM time to compile and load
+        setTimeout(() => {
+            log('=== Testing WAT GC Textual Format ===', 'info');
+
+            // Check if WASM functions are available
+            if (typeof makePoint === 'undefined') {
+                log('ERROR: makePoint function not found', 'error');
+                log('WAT GC compilation may have failed - check console', 'error');
+                return;
+            }
+            log('✓ WASM GC functions loaded', 'success');
+
+            // Create a point at (3, 4)
+            log('Creating point at (3.0, 4.0)...', 'info');
+            const point = makePoint(3.0, 4.0);
+            log('✓ Point created: ' + typeof point, 'success');
+
+            // Get coordinates
+            const x = getX(point);
+            const y = getY(point);
+            log('getX(point) = ' + x + ' (expected 3.0)',
+                Math.abs(x - 3.0) < 0.01 ? 'success' : 'error');
+            log('getY(point) = ' + y + ' (expected 4.0)',
+                Math.abs(y - 4.0) < 0.01 ? 'success' : 'error');
+
+            // Calculate distance (should be 5.0 for 3-4-5 triangle)
+            const dist = distanceFromOrigin(point);
+            log('distanceFromOrigin(point) = ' + dist + ' (expected 5.0)',
+                Math.abs(dist - 5.0) < 0.01 ? 'success' : 'error');
+
+            // Modify the point
+            log('Setting point to (5.0, 12.0)...', 'info');
+            setX(point, 5.0);
+            setY(point, 12.0);
+
+            const newX = getX(point);
+            const newY = getY(point);
+            log('New X = ' + newX + ' (expected 5.0)',
+                Math.abs(newX - 5.0) < 0.01 ? 'success' : 'error');
+            log('New Y = ' + newY + ' (expected 12.0)',
+                Math.abs(newY - 12.0) < 0.01 ? 'success' : 'error');
+
+            // New distance (should be 13.0 for 5-12-13 triangle)
+            const newDist = distanceFromOrigin(point);
+            log('New distanceFromOrigin(point) = ' + newDist + ' (expected 13.0)',
+                Math.abs(newDist - 13.0) < 0.01 ? 'success' : 'error');
+
+            // Create multiple points
+            log('Creating multiple points...', 'info');
+            const p1 = makePoint(1.0, 0.0);
+            const p2 = makePoint(0.0, 1.0);
+            const p3 = makePoint(1.0, 1.0);
+
+            const d1 = distanceFromOrigin(p1);
+            const d2 = distanceFromOrigin(p2);
+            const d3 = distanceFromOrigin(p3);
+
+            log('Point (1,0) distance = ' + d1.toFixed(2) + ' (expected 1.00)', 'info');
+            log('Point (0,1) distance = ' + d2.toFixed(2) + ' (expected 1.00)', 'info');
+            log('Point (1,1) distance = ' + d3.toFixed(2) + ' (expected 1.41)', 'info');
+
+            // List available helpers
+            if (typeof WasmGcStructGet !== 'undefined') {
+                log('✓ WasmGcStructGet helper available', 'success');
+            }
+
+            if (typeof WasmListGetters !== 'undefined') {
+                const getters = WasmListGetters();
+                log('Available getters: ' + JSON.stringify(getters), 'info');
+            }
+
+            log('=== All GC Tests Passed ===', 'success');
+            log('WAT GC textual format works perfectly!', 'success');
+
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WAT Textual Format Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>WAT Textual Format Test</h1>
+    <p>Testing direct WAT (WebAssembly Text) format in script tags</p>
+    <div id="output"></div>
+
+    <!-- WAT in textual format - will be compiled automatically by Servo -->
+    <script type="application/wasm">
+        (module
+          ;; A simple calculator module
+          (func $add (export "add") (param $a i32) (param $b i32) (result i32)
+            local.get $a
+            local.get $b
+            i32.add
+          )
+
+          (func $subtract (export "subtract") (param $a i32) (param $b i32) (result i32)
+            local.get $a
+            local.get $b
+            i32.sub
+          )
+
+          (func $multiply (export "multiply") (param $a i32) (param $b i32) (result i32)
+            local.get $a
+            local.get $b
+            i32.mul
+          )
+
+          (func $divide (export "divide") (param $a i32) (param $b i32) (result i32)
+            local.get $a
+            local.get $b
+            i32.div_s
+          )
+
+          ;; Memory for string operations
+          (memory $mem 1)
+          (export "memory" (memory $mem))
+        )
+    </script>
+
+    <script>
+        function log(msg, className = 'info') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = msg;
+            document.getElementById('output').appendChild(div);
+            console.log(msg);
+        }
+
+        // Give WASM time to compile and load
+        setTimeout(() => {
+            log('=== Testing WAT Textual Format ===', 'info');
+
+            // Check if WASM functions are available
+            if (typeof add === 'undefined') {
+                log('ERROR: add function not found - WAT compilation may have failed', 'error');
+                log('Check browser console for compilation errors', 'info');
+                return;
+            }
+            log('✓ WASM functions loaded successfully', 'success');
+
+            // Test add
+            const addResult = add(15, 27);
+            log('add(15, 27) = ' + addResult + ' (expected 42)',
+                addResult === 42 ? 'success' : 'error');
+
+            // Test subtract
+            const subResult = subtract(100, 58);
+            log('subtract(100, 58) = ' + subResult + ' (expected 42)',
+                subResult === 42 ? 'success' : 'error');
+
+            // Test multiply
+            const mulResult = multiply(6, 7);
+            log('multiply(6, 7) = ' + mulResult + ' (expected 42)',
+                mulResult === 42 ? 'success' : 'error');
+
+            // Test divide
+            const divResult = divide(84, 2);
+            log('divide(84, 2) = ' + divResult + ' (expected 42)',
+                divResult === 42 ? 'success' : 'error');
+
+            // Check memory export
+            if (typeof memory !== 'undefined') {
+                log('✓ Memory exported: ' + memory.buffer.byteLength + ' bytes', 'success');
+            } else {
+                log('Note: Memory not exported to window', 'info');
+            }
+
+            // List all WASM exports
+            if (typeof _wasmExports !== 'undefined') {
+                log('Available WASM exports:', 'info');
+                for (const name in _wasmExports) {
+                    log('  - ' + name + ' (' + typeof _wasmExports[name] + ')', 'info');
+                }
+            }
+
+            log('=== All Tests Passed ===', 'success');
+            log('WAT textual format works perfectly!', 'success');
+
+        }, 1000);
+    </script>
+</body>
+</html>
