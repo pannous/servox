@@ -73,8 +73,8 @@ const value2 = WasmGcStructGet(box, 'val');
 ### Examples
 - `test-wasm-gc-simple.wat` - WASM GC struct definition
 - `test-wasm-gc-simple.wasm` - Pre-compiled binary (183 bytes)
-- `test-wasm-gc-inline-binary.html` - ✓ **RECOMMENDED** - Inline hex, no fetch, works with file://
-- `test-wasm-gc-load-binary.html` - Demo loading via fetch (requires web server)
+- `test-wasm-gc-load-binary.html` - ✓ **RECOMMENDED** - Loads via fetch() from file://
+- `test-wasm-gc-inline-binary.html` - Inline hex, no fetch needed
 - `test-wasm-gc-struct.html` - Inline WASM GC example
 
 ### Build Tools
@@ -104,22 +104,30 @@ wat2wasm input.wat -o output.wasm --enable-gc
 
 Run Servo with any of the test files:
 ```bash
-# Recommended - works with file:// URLs (no server needed)
+# Recommended - loads WASM via fetch() from file://
+./mach run test-wasm-gc-load-binary.html
+
+# Alternative - inline binary as hex
 ./mach run test-wasm-gc-inline-binary.html
 
-# These also work
+# Inline WAT source
 ./mach run test-wasm-gc-simple.html
 ./mach run test-wasm-gc-struct.html
-
-# Requires web server (fetch doesn't work with file://)
-# ./mach run test-wasm-gc-load-binary.html
 ```
 
 ## Loading WASM from file:// URLs
 
-When opening HTML files directly (file:// protocol), `fetch()` fails with "Network error".
+✅ **Now Supported!** As of commit `acd3ec77cf7`, `fetch()` works with `file://` URLs.
 
-**Solution 1: Inline Hex Data (Recommended)**
+**Solution 1: Direct fetch() (Recommended)**
+```javascript
+const response = await fetch('test-wasm-gc-simple.wasm');
+const wasmBytes = await response.arrayBuffer();
+const result = await WebAssembly.instantiate(wasmBytes);
+```
+See: `test-wasm-gc-load-binary.html`
+
+**Solution 2: Inline Hex Data (No fetch needed)**
 ```javascript
 const wasmHex = '0061736d...';  // Full binary as hex
 const wasmBytes = hexToBytes(wasmHex);
@@ -127,15 +135,10 @@ const result = await WebAssembly.instantiate(wasmBytes);
 ```
 See: `test-wasm-gc-inline-binary.html`
 
-**Solution 2: Use a Local Server**
-```bash
-python3 -m http.server 8000
-# Then open http://localhost:8000/test-wasm-gc-load-binary.html
-```
-
 ## Commits
 
 - `8162aa794f4` - Add WASM GC struct field accessor support
 - `f09fbcf30fe` - Add WASM binary loading examples and GC struct test
 - `4abfd999e05` - Add inline WASM GC binary loader without fetch
 - `a4c1a07c20f` - Add WASM GC struct field access guide
+- `acd3ec77cf7` - **Enable fetch() for file:// URLs** ⭐
