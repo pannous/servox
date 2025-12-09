@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Load WASM GC Binary Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Load WASM GC Binary Test</h1>
+    <p>Loading pre-compiled WASM GC binary from test-wasm-gc-simple.wasm</p>
+    <div id="output"></div>
+
+    <script>
+        function log(msg, className = 'info') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = msg;
+            document.getElementById('output').appendChild(div);
+            console.log(msg);
+        }
+
+        async function loadWasmGC() {
+            try {
+                log('=== Loading WASM GC Binary ===', 'info');
+
+                // Load the GC WASM binary
+                log('Fetching test-wasm-gc-simple.wasm...', 'info');
+                const response = await fetch('test-wasm-gc-simple.wasm');
+
+                if (!response.ok) {
+                    log('ERROR: Failed to fetch WASM file: ' + response.status, 'error');
+                    return;
+                }
+
+                const wasmBytes = await response.arrayBuffer();
+                log('✓ Loaded ' + wasmBytes.byteLength + ' bytes', 'success');
+
+                // Log the first few bytes for verification
+                const view = new Uint8Array(wasmBytes);
+                const header = Array.from(view.slice(0, 8))
+                    .map(b => '0x' + b.toString(16).padStart(2, '0'))
+                    .join(' ');
+                log('WASM header: ' + header, 'info');
+
+                // Instantiate the WASM module
+                log('Instantiating WASM GC module...', 'info');
+                const result = await WebAssembly.instantiate(wasmBytes);
+                log('✓ Module instantiated', 'success');
+
+                // List all exports
+                log('Exports:', 'info');
+                for (const name in result.instance.exports) {
+                    const exp = result.instance.exports[name];
+                    log('  - ' + name + ' (' + typeof exp + ')', 'info');
+                }
+
+                // Test makeBox function
+                if (!result.instance.exports.makeBox) {
+                    log('ERROR: makeBox function not found', 'error');
+                    return;
+                }
+                log('✓ Found makeBox function', 'success');
+
+                // Test getValue function
+                if (!result.instance.exports.getValue) {
+                    log('ERROR: getValue function not found', 'error');
+                    return;
+                }
+                log('✓ Found getValue function', 'success');
+
+                // Test setValue function
+                if (!result.instance.exports.setValue) {
+                    log('ERROR: setValue function not found', 'error');
+                    return;
+                }
+                log('✓ Found setValue function', 'success');
+
+                // Create a box with value 42
+                log('Creating box with value 42...', 'info');
+                const box = result.instance.exports.makeBox(42);
+                log('✓ Box created: ' + typeof box, 'success');
+
+                // Get the value from the box
+                log('Getting value from box...', 'info');
+                const value = result.instance.exports.getValue(box);
+                log('✓ getValue(box) = ' + value + ' (expected 42)',
+                    value === 42 ? 'success' : 'error');
+
+                // Set a new value
+                log('Setting box value to 100...', 'info');
+                result.instance.exports.setValue(box, 100);
+                const newValue = result.instance.exports.getValue(box);
+                log('✓ getValue(box) = ' + newValue + ' (expected 100)',
+                    newValue === 100 ? 'success' : 'error');
+
+                // Store exports globally
+                window.makeBox = result.instance.exports.makeBox;
+                window.getValue = result.instance.exports.getValue;
+                window.setValue = result.instance.exports.setValue;
+                window._wasmExports = result.instance.exports;
+
+                log('✓ Functions exported to window', 'success');
+
+                // Test the WasmGcStructGet helper if available
+                if (typeof WasmGcStructGet !== 'undefined') {
+                    log('Testing WasmGcStructGet helper...', 'info');
+                    const val = WasmGcStructGet(box, 'val');
+                    log('WasmGcStructGet(box, "val") = ' + val, 'info');
+                } else {
+                    log('Note: WasmGcStructGet not available (inline script needed)', 'info');
+                }
+
+                // Test with WasmListGetters if available
+                if (typeof WasmListGetters !== 'undefined') {
+                    const getters = WasmListGetters();
+                    log('Available getters: ' + JSON.stringify(getters), 'info');
+                }
+
+                log('=== Test Complete ===', 'success');
+                log('Try in console: makeBox(123), getValue(box)', 'info');
+
+            } catch (e) {
+                log('ERROR: ' + e.message, 'error');
+                console.error('Full error:', e);
+            }
+        }
+
+        // Run when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadWasmGC);
+        } else {
+            loadWasmGC();
+        }
+    </script>
+</body>
+</html>

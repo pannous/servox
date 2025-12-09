@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Load WASM Binary Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Load WASM Binary Test</h1>
+    <div id="output"></div>
+
+    <script>
+        function log(msg, className = 'info') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = msg;
+            document.getElementById('output').appendChild(div);
+            console.log(msg);
+        }
+
+        async function loadWasm() {
+            try {
+                log('=== Loading WASM Binary ===', 'info');
+
+                // Load the simple WASM binary
+                log('Fetching test-simple.wasm...', 'info');
+                const response = await fetch('test-simple.wasm');
+
+                if (!response.ok) {
+                    log('ERROR: Failed to fetch WASM file: ' + response.status, 'error');
+                    return;
+                }
+
+                const wasmBytes = await response.arrayBuffer();
+                log('✓ Loaded ' + wasmBytes.byteLength + ' bytes', 'success');
+
+                // Instantiate the WASM module
+                log('Instantiating WASM module...', 'info');
+                const result = await WebAssembly.instantiate(wasmBytes);
+                log('✓ Module instantiated', 'success');
+
+                // Test the exports
+                if (!result.instance.exports.add) {
+                    log('ERROR: add function not found', 'error');
+                    return;
+                }
+                log('✓ Found add function', 'success');
+
+                if (!result.instance.exports.multiply) {
+                    log('ERROR: multiply function not found', 'error');
+                    return;
+                }
+                log('✓ Found multiply function', 'success');
+
+                // Test the functions
+                const addResult = result.instance.exports.add(5, 7);
+                log('add(5, 7) = ' + addResult + ' (expected 12)',
+                    addResult === 12 ? 'success' : 'error');
+
+                const mulResult = result.instance.exports.multiply(3, 4);
+                log('multiply(3, 4) = ' + mulResult + ' (expected 12)',
+                    mulResult === 12 ? 'success' : 'error');
+
+                // Store exports globally
+                window.wasmAdd = result.instance.exports.add;
+                window.wasmMultiply = result.instance.exports.multiply;
+
+                log('✓ Functions exported to window.wasmAdd and window.wasmMultiply', 'success');
+                log('=== Test Complete ===', 'success');
+
+            } catch (e) {
+                log('ERROR: ' + e.message, 'error');
+                console.error('Full error:', e);
+            }
+        }
+
+        // Run when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadWasm);
+        } else {
+            loadWasm();
+        }
+    </script>
+</body>
+</html>
