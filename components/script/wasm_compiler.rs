@@ -102,6 +102,9 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
 
                 // Export all WASM functions to window
                 if (result.instance && result.instance.exports) {{
+                    // Store exports for later introspection
+                    window._wasmExports = result.instance.exports;
+
                     for (const name in result.instance.exports) {{
                         const func = result.instance.exports[name];
                         if (typeof func === 'function') {{
@@ -109,6 +112,60 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
                             console.log('WASM: Exported function ' + name);
                         }}
                     }}
+
+                    // Create GC struct field accessors
+                    // For WASM GC structs, we need getter functions that call struct.get
+                    // These are typically exported as 'get_field_X' functions by WASM
+                    window.WasmGcStructGet = function(structObj, fieldIndex) {{
+                        // Attempt to extract field value from GC struct
+                        // Look for exported getter functions following common patterns
+                        const getterName = 'get_' + fieldIndex;
+                        if (window._wasmExports && window._wasmExports[getterName]) {{
+                            try {{
+                                return window._wasmExports[getterName](structObj);
+                            }} catch (e) {{
+                                console.warn('WasmGcStructGet: Getter', getterName, 'failed:', e);
+                            }}
+                        }}
+
+                        // Fallback: try numeric field access patterns
+                        const fieldGetter = 'struct_get_' + fieldIndex;
+                        if (window._wasmExports && window._wasmExports[fieldGetter]) {{
+                            try {{
+                                return window._wasmExports[fieldGetter](structObj);
+                            }} catch (e) {{
+                                console.warn('WasmGcStructGet: Getter', fieldGetter, 'failed:', e);
+                            }}
+                        }}
+
+                        // Try property access as last resort (for externref wrapping)
+                        if (structObj && typeof structObj === 'object') {{
+                            if (structObj[fieldIndex] !== undefined) {{
+                                return structObj[fieldIndex];
+                            }}
+                            const fieldName = 'field' + fieldIndex;
+                            if (structObj[fieldName] !== undefined) {{
+                                return structObj[fieldName];
+                            }}
+                        }}
+
+                        console.warn('WasmGcStructGet: Unable to access field', fieldIndex, 'on', structObj);
+                        return undefined;
+                    }};
+
+                    // Helper to list available getter functions
+                    window.WasmListGetters = function() {{
+                        const getters = [];
+                        for (const name in window._wasmExports) {{
+                            if (name.startsWith('get_') || name.startsWith('struct_get_')) {{
+                                getters.push(name);
+                            }}
+                        }}
+                        return getters;
+                    }};
+
+                    console.log('WASM: GC struct accessors installed');
+                    console.log('WASM: Available getters:', window.WasmListGetters());
                 }}
 
                 console.log('WASM module loaded successfully');

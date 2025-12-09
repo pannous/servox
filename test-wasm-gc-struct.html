@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WASM GC Struct Field Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>WASM GC Struct Field Test</h1>
+    <div id="output"></div>
+
+    <script type="application/wasm">
+        (module
+          ;; Define a struct type with two fields
+          (type $point (struct (field $x (mut f32)) (field $y (mut f32))))
+
+          ;; Create a new point struct
+          (func $makePoint (param $x f32) (param $y f32) (result (ref $point))
+            local.get $x
+            local.get $y
+            struct.new $point
+          )
+
+          ;; Get the x field
+          (func $getX (param $p (ref $point)) (result f32)
+            local.get $p
+            struct.get $point $x
+          )
+
+          ;; Get the y field
+          (func $getY (param $p (ref $point)) (result f32)
+            local.get $p
+            struct.get $point $y
+          )
+
+          ;; Set the x field
+          (func $setX (param $p (ref $point)) (param $val f32)
+            local.get $p
+            local.get $val
+            struct.set $point $x
+          )
+
+          ;; Set the y field
+          (func $setY (param $p (ref $point)) (param $val f32)
+            local.get $p
+            local.get $val
+            struct.set $point $y
+          )
+
+          ;; Export functions
+          (export "makePoint" (func $makePoint))
+          (export "getX" (func $getX))
+          (export "getY" (func $getY))
+          (export "setX" (func $setX))
+          (export "setY" (func $setY))
+        )
+    </script>
+
+    <script>
+        function log(msg, className = 'info') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = msg;
+            document.getElementById('output').appendChild(div);
+            console.log(msg);
+        }
+
+        function runTests() {
+            log('=== WASM GC Struct Field Test ===', 'info');
+
+            try {
+                // Wait for WASM to load
+                setTimeout(() => {
+                    try {
+                        log('Checking WASM exports...', 'info');
+
+                        // Check if functions are available
+                        if (typeof makePoint === 'undefined') {
+                            log('ERROR: makePoint function not found', 'error');
+                            return;
+                        }
+                        log('✓ makePoint function found', 'success');
+
+                        if (typeof getX === 'undefined') {
+                            log('ERROR: getX function not found', 'error');
+                            return;
+                        }
+                        log('✓ getX function found', 'success');
+
+                        if (typeof getY === 'undefined') {
+                            log('ERROR: getY function not found', 'error');
+                            return;
+                        }
+                        log('✓ getY function found', 'success');
+
+                        // Check GC struct accessor
+                        if (typeof WasmGcStructGet === 'undefined') {
+                            log('ERROR: WasmGcStructGet not found', 'error');
+                            return;
+                        }
+                        log('✓ WasmGcStructGet found', 'success');
+
+                        // List available getters
+                        if (typeof WasmListGetters !== 'undefined') {
+                            const getters = WasmListGetters();
+                            log('Available getters: ' + JSON.stringify(getters), 'info');
+                        }
+
+                        // Test: Create a point
+                        log('Creating point (3.5, 7.2)...', 'info');
+                        const point = makePoint(3.5, 7.2);
+                        log('✓ Point created: ' + typeof point, 'success');
+
+                        // Test: Read x field
+                        log('Reading x field...', 'info');
+                        const x = getX(point);
+                        log('✓ x = ' + x + ' (expected 3.5)', x === 3.5 ? 'success' : 'error');
+
+                        // Test: Read y field
+                        log('Reading y field...', 'info');
+                        const y = getY(point);
+                        log('✓ y = ' + y + ' (expected 7.2)', Math.abs(y - 7.2) < 0.01 ? 'success' : 'error');
+
+                        // Test: Use WasmGcStructGet with field name
+                        log('Testing WasmGcStructGet with field name...', 'info');
+                        const x2 = WasmGcStructGet(point, 'x');
+                        log('WasmGcStructGet(point, "x") = ' + x2, x2 !== undefined ? 'success' : 'info');
+
+                        const y2 = WasmGcStructGet(point, 'y');
+                        log('WasmGcStructGet(point, "y") = ' + y2, y2 !== undefined ? 'success' : 'info');
+
+                        // Test: Modify fields
+                        log('Setting x to 10.0...', 'info');
+                        setX(point, 10.0);
+                        const newX = getX(point);
+                        log('✓ New x = ' + newX + ' (expected 10.0)', newX === 10.0 ? 'success' : 'error');
+
+                        log('Setting y to 20.0...', 'info');
+                        setY(point, 20.0);
+                        const newY = getY(point);
+                        log('✓ New y = ' + newY + ' (expected 20.0)', newY === 20.0 ? 'success' : 'error');
+
+                        log('=== All tests completed ===', 'success');
+
+                    } catch (e) {
+                        log('ERROR in tests: ' + e.message, 'error');
+                        console.error('Full error:', e);
+                    }
+                }, 1000);
+
+            } catch (e) {
+                log('ERROR: ' + e.message, 'error');
+                console.error('Full error:', e);
+            }
+        }
+
+        // Run tests when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runTests);
+        } else {
+            runTests();
+        }
+    </script>
+</body>
+</html>

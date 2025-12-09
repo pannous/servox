@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple WASM GC Test</title>
+</head>
+<body>
+    <h1>Simple WASM GC Struct Test</h1>
+    <div id="log"></div>
+
+    <script type="application/wasm">
+        (module
+          ;; Simple struct with one i32 field
+          (type $box (struct (field $val (mut i32))))
+
+          ;; Create a box with a value
+          (func $makeBox (param $v i32) (result (ref $box))
+            local.get $v
+            struct.new $box
+          )
+
+          ;; Get the value from the box
+          (func $getValue (param $b (ref $box)) (result i32)
+            local.get $b
+            struct.get $box $val
+          )
+
+          (export "makeBox" (func $makeBox))
+          (export "getValue" (func $getValue))
+        )
+    </script>
+
+    <script>
+        function log(msg) {
+            const div = document.createElement('div');
+            div.textContent = msg;
+            document.getElementById('log').appendChild(div);
+            console.log(msg);
+        }
+
+        setTimeout(() => {
+            log('Testing WASM GC...');
+
+            if (typeof makeBox === 'undefined') {
+                log('ERROR: makeBox not found');
+                return;
+            }
+
+            log('Creating box with value 42...');
+            const box = makeBox(42);
+            log('Box created: ' + typeof box);
+
+            log('Getting value from box...');
+            const val = getValue(box);
+            log('Value: ' + val + ' (expected 42)');
+
+            if (typeof WasmGcStructGet !== 'undefined') {
+                log('WasmGcStructGet is available');
+                const v2 = WasmGcStructGet(box, 'val');
+                log('WasmGcStructGet result: ' + v2);
+            }
+
+            if (typeof WasmListGetters !== 'undefined') {
+                log('Available getters: ' + JSON.stringify(WasmListGetters()));
+            }
+
+            log('Test complete!');
+        }, 1000);
+    </script>
+</body>
+</html>
