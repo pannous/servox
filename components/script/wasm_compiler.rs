@@ -122,10 +122,100 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
                     // Store exports for later introspection
                     window._wasmExports = result.instance.exports;
 
+                    // Helper to wrap WASM GC objects with transparent property access
+                    const wrapGcObject = function(obj) {{
+                        if (!obj || typeof obj !== 'object') {{
+                            return obj;
+                        }}
+
+                        // Create a Proxy that intercepts property access and toString
+                        return new Proxy(obj, {{
+                            get(target, prop) {{
+                                // Handle toString/valueOf for string conversion
+                                if (prop === 'toString' || prop === 'valueOf') {{
+                                    return function() {{
+                                        let structName = 'box';
+                                        let fields = [];
+
+                                        // Try to get field values using getter functions
+                                        const commonFields = ['val', 'value', 'data', 'x', 'y', 'z', 'width', 'height'];
+                                        for (const fieldName of commonFields) {{
+                                            const getterName = 'get_' + fieldName;
+                                            if (window._wasmExports && window._wasmExports[getterName]) {{
+                                                try {{
+                                                    const fieldValue = window._wasmExports[getterName](target);
+                                                    if (fieldValue !== undefined) {{
+                                                        fields.push(fieldName + '=' + fieldValue);
+                                                    }}
+                                                }} catch (e) {{
+                                                    // Field doesn't exist or error, skip
+                                                }}
+                                            }}
+                                        }}
+
+                                        if (fields.length > 0) {{
+                                            return structName + '{{' + fields.join(', ') + '}}';
+                                        }} else {{
+                                            return structName + '{{}}';
+                                        }}
+                                    }};
+                                }}
+
+                                // Handle Symbol.toPrimitive for implicit conversions
+                                if (prop === Symbol.toPrimitive) {{
+                                    return function(hint) {{
+                                        const str = this.toString();
+                                        return str;
+                                    }};
+                                }}
+
+                                // Handle property access like box.val -> calls get_val(box)
+                                const getterName = 'get_' + String(prop);
+                                if (window._wasmExports && window._wasmExports[getterName]) {{
+                                    try {{
+                                        return window._wasmExports[getterName](target);
+                                    }} catch (e) {{
+                                        console.warn('Property access failed for', prop, ':', e);
+                                    }}
+                                }}
+
+                                // Fall back to direct access
+                                return target[prop];
+                            }},
+
+                            set(target, prop, value) {{
+                                // Handle property setting like box.val = 99 -> calls set_val(box, 99)
+                                const setterName = 'set_' + String(prop);
+                                if (window._wasmExports && window._wasmExports[setterName]) {{
+                                    try {{
+                                        window._wasmExports[setterName](target, value);
+                                        return true;
+                                    }} catch (e) {{
+                                        console.warn('Property set failed for', prop, ':', e);
+                                    }}
+                                }}
+
+                                // Fall back to direct assignment (will likely fail for GC objects)
+                                try {{
+                                    target[prop] = value;
+                                    return true;
+                                }} catch (e) {{
+                                    console.warn('Cannot set property', prop, 'on WASM GC object');
+                                    return false;
+                                }}
+                            }}
+                        }});
+                    }};
+
                     for (const name in result.instance.exports) {{
                         const func = result.instance.exports[name];
                         if (typeof func === 'function') {{
-                            window[name] = func;
+                            // Wrap exported functions to automatically wrap returned GC objects
+                            window[name] = function(...args) {{
+                                const result = func(...args);
+                                // Wrap result if it's an object (likely a GC struct)
+                                return wrapGcObject(result);
+                            }};
                             console.log('WASM: Exported function ' + name);
                         }}
                     }}

@@ -57,34 +57,34 @@
         log('Creating box with value 42...');
         const box = window.makeBox(42);
 
-        // Use WasmGcStructDisplay to show the struct contents
-        if (typeof WasmGcStructDisplay !== 'undefined') {
-          log('✅ Box created: ' + WasmGcStructDisplay(box));
+        // Test direct string concatenation (uses toString via Proxy)
+        log('✅ Box created: ' + box);
+
+        // Test direct property access (uses Proxy get trap)
+        log('Testing direct property access...', 'info');
+        const val = box.val;
+        log('box.val = ' + val, 'info');
+
+        if (val === 42) {
+          log('✅ SUCCESS: Got correct value from GC struct!', 'info');
         } else {
-          log('✅ Box created (display helper not available)');
+          log('❌ ERROR: Expected 42, got ' + val, 'error');
         }
 
-        // Test the WasmGcStructGet helper if available
-        if (typeof WasmGcStructGet !== 'undefined') {
-          log('Testing WasmGcStructGet helper...', 'info');
-          const val = WasmGcStructGet(box, 'val');
-          log('WasmGcStructGet(box, "val") = ' + val, 'info');
+        // Test property setter
+        log('Testing property setter...', 'info');
+        box.val = 99;
+        log('Set box.val = 99', 'info');
 
-          if (val === 42) {
-            log('✅ SUCCESS: Got correct value from GC struct!', 'info');
-          } else {
-            log('❌ ERROR: Expected 42, got ' + val, 'error');
-          }
+        const newVal = box.val;
+        if (newVal === 99) {
+          log('✅ SUCCESS: Property setter works! box.val = ' + newVal, 'info');
         } else {
-          log('Note: WasmGcStructGet not available (needs implementation)', 'info');
+          log('❌ ERROR: Expected 99, got ' + newVal, 'error');
         }
 
-        // Try direct property access
-        if (box.val !== undefined) {
-          log('Direct access: box.val = ' + box.val, 'info');
-        } else {
-          log('Note: Direct property access not available', 'info');
-        }
+        // Test toString again with new value
+        log('After modification: ' + box, 'info')
 
       } catch (e) {
         log('❌ Error: ' + e.message, 'error');
