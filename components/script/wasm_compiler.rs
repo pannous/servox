@@ -247,14 +247,23 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
                     }};
 
                     for (const name in result.instance.exports) {{
-                        const func = result.instance.exports[name];
-                        if (typeof func === 'function') {{
+                        const exported = result.instance.exports[name];
+
+                        if (typeof exported === 'function') {{
                             // Wrap function to auto-wrap GC object return values
                             window[name] = function(...args) {{
-                                const result = func.apply(this, args);
+                                const result = exported.apply(this, args);
                                 return wrapGcObject(result);
                             }};
                             console.log('WASM: Exported function ' + name);
+                        }} else if (exported instanceof WebAssembly.Global) {{
+                            // Export globals directly - they have .value property
+                            window[name] = exported;
+                            console.log('WASM: Exported global ' + name + ' = ' + exported.value);
+                        }} else {{
+                            // Export other types (Memory, Table, etc.)
+                            window[name] = exported;
+                            console.log('WASM: Exported ' + name);
                         }}
                     }}
 

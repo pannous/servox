@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head><title>WASM GC Named Fields Test</title></head>
+<body>
+  <h1>WASM GC Named Fields Test</h1>
+  <div id="log"></div>
+
+  <script type="text/wast">
+(module
+  ;; Define struct type
+  (type $Box (struct (field $val (mut i32))))
+
+  ;; Simple i32 global
+  (global $counter (export "counter") (mut i32) (i32.const 42))
+
+  ;; Another global
+  (global $max (export "max") i32 (i32.const 100))
+
+  ;; Function to create a Box
+  (func $makeBox (export "makeBox") (param i32) (result (ref $Box))
+    local.get 0
+    struct.new $Box
+  )
+
+  ;; Function to get counter
+  (func $getCounter (export "getCounter") (result i32)
+    global.get $counter
+  )
+
+  ;; Function to increment counter
+  (func $incCounter (export "incCounter")
+    global.get $counter
+    i32.const 1
+    i32.add
+    global.set $counter
+  )
+)
+  </script>
+
+  <script>
+    function log(msg) {
+      const div = document.getElementById('log');
+      const p = document.createElement('p');
+      p.textContent = msg;
+      div.appendChild(p);
+      console.log(msg);
+    }
+
+    setTimeout(() => {
+      log('=== Testing WASM Globals ===');
+
+      // Test exported globals
+      if (typeof window.counter !== 'undefined') {
+        log('✅ counter global found: ' + window.counter);
+        log('counter.value = ' + window.counter.value);
+      } else {
+        log('❌ counter global not found');
+      }
+
+      if (typeof window.max !== 'undefined') {
+        log('✅ max global found: ' + window.max);
+        log('max.value = ' + window.max.value);
+      } else {
+        log('❌ max global not found');
+      }
+
+      // Test counter functions
+      if (typeof window.getCounter === 'function') {
+        log('getCounter() = ' + window.getCounter());
+
+        // Increment counter
+        window.incCounter();
+        log('After incCounter(): ' + window.getCounter());
+
+        // Modify via global object
+        if (window.counter) {
+          window.counter.value = 999;
+          log('After setting counter.value=999: ' + window.getCounter());
+        }
+      }
+
+      log('');
+      log('=== Testing WASM GC Structs ===');
+
+      // Test struct creation
+      if (typeof window.makeBox === 'function') {
+        const box = window.makeBox(42);
+        log('box = ' + box);
+        log('box.val = ' + box.val);
+      }
+
+    }, 500);
+  </script>
+</body>
+</html>
