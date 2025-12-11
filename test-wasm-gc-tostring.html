@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><title>WASM GC toString Test</title></head>
+<body>
+  <h1>WASM GC toString Test</h1>
+  <div id="log"></div>
+
+  <script type="text/wast">
+(module
+  (type $box (struct (field $val (mut i32))))
+  (func $makeBox (export "makeBox") (param i32) (result (ref $box))
+    local.get 0
+    struct.new $box
+  )
+)
+  </script>
+
+  <script>
+    function log(msg) {
+      const div = document.getElementById('log');
+      const p = document.createElement('p');
+      p.textContent = msg;
+      div.appendChild(p);
+      console.log(msg);
+    }
+
+    setTimeout(() => {
+      const box = window.makeBox(42);
+
+      // Test toString conversion
+      try {
+        log('✅ Testing: "Box: " + box');
+        log('Box: ' + box);  // Should work now
+      } catch (e) {
+        log('❌ Error: ' + e.message);
+      }
+
+      // Test box[0] access
+      log('box[0] = ' + box[0]);
+
+      // Test setting
+      box[0] = 99;
+      log('After set, box[0] = ' + box[0]);
+    }, 500);
+  </script>
+</body>
+</html>
