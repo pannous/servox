@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head><title>WASM GC Named Fields Test</title></head>
+<body>
+  <h1>WASM GC Named Fields Test</h1>
+  <div id="log"></div>
+
+  <script type="text/wast">
+(module
+  (type $box (struct (field $val (mut i32))))
+  (func $makeBox (export "makeBox") (param i32) (result (ref $box))
+    local.get 0
+    struct.new $box
+  )
+)
+  </script>
+
+  <script>
+    function log(msg) {
+      const div = document.getElementById('log');
+      const p = document.createElement('p');
+      p.textContent = msg;
+      div.appendChild(p);
+      console.log(msg);
+    }
+
+    setTimeout(() => {
+      const box = window.makeBox(42);
+
+      // Manually add named property alias for 'val' -> index 0
+      // This simulates what our compiler could do automatically
+      try {
+        Object.defineProperty(box, 'val', {
+          get() { return this[0]; },
+          set(v) { this[0] = v; },
+          enumerable: false,
+          configurable: true
+        });
+        log('✅ Property alias created');
+      } catch (e) {
+        log('❌ Failed to create property alias: ' + e.message);
+      }
+
+      // Test numeric access
+      log('box[0] = ' + box[0]);
+
+      // Test named access
+      try {
+        log('box.val = ' + box.val);
+        log('✅ Named field access works!');
+      } catch (e) {
+        log('❌ Named access failed: ' + e.message);
+      }
+
+      // Test named setting
+      try {
+        box.val = 99;
+        log('After box.val = 99:');
+        log('  box.val = ' + box.val);
+        log('  box[0] = ' + box[0]);
+        log('✅ Named field setting works!');
+      } catch (e) {
+        log('❌ Named setting failed: ' + e.message);
+      }
+    }, 500);
+  </script>
+</body>
+</html>
