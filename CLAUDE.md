@@ -1,3 +1,4 @@
 - NEVER git reset hard without creating a backup branch or similar
 - memory don't write .md documents
 - run servo with '&' and kill after 5 sec. Which should be plenty of time together all the output
+- no hardcoding, do general cases
