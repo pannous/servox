@@ -255,21 +255,15 @@ impl ScriptOrigin {
         } else if type_ == ScriptType::Wasm {
             // Compile WAT to JavaScript that loads the WASM module
             use crate::wasm_compiler;
-            eprintln!("🔥 ScriptOrigin::internal() - Processing inline WASM script!");
             let source_str = text.str().to_string();
-            eprintln!("📝 WASM source ({} chars): {}", source_str.len(), &source_str.chars().take(100).collect::<String>());
-            eprintln!("🚀 Calling wasm_compiler::compile_wat_to_js...");
             match wasm_compiler::compile_wat_to_js(&source_str, url.as_str(), None) {
                 Ok(js_code) => {
-                    eprintln!("✅ WASM compiled successfully! Generated {} bytes of JavaScript", js_code.len());
-                    eprintln!("📜 Generated JS (first 200 chars): {}", &js_code.chars().take(200).collect::<String>());
                     let js_dom_string = Rc::new(DOMString::from(js_code));
                     (js_dom_string, ScriptType::Classic)
                 },
                 Err(e) => {
                     // On compilation error, emit error as console.error
                     warn!("WASM compilation error: {}", e);
-                    eprintln!("❌ WASM compilation FAILED: {}", e);
                     let error_msg = format!("console.error('WASM compilation error: {}');", e.to_string().replace("'", "\\'"));
                     let error_script = Rc::new(DOMString::from(error_msg));
                     (error_script, ScriptType::Classic)
@@ -322,7 +316,6 @@ impl ScriptOrigin {
         } else if type_ == ScriptType::Wasm {
             // Compile WAT to JavaScript that loads the WASM module
             use crate::wasm_compiler;
-            eprintln!("🔥 ScriptOrigin::external() - Processing external WASM script!");
             let source_str = text.str().to_string();
             let callback_ref = callback.as_deref();
             match wasm_compiler::compile_wat_to_js(&source_str, url.as_str(), callback_ref) {
@@ -1431,13 +1424,10 @@ impl HTMLScriptElement {
                 // WebAssembly Text support
                 // Use text/wast as primary type (triggers html5ever RawData mode like text/typescript)
                 // Keep application/wasm and text/wasm for compatibility
-                eprintln!("🔍 WASM CHECK: Comparing '{}' against WASM types", ty_trimmed);
                 if ty_trimmed == "text/wast" || ty_trimmed == "text/wasm" ||
                    ty_trimmed == "application/wasm" || ty_trimmed == "binary/wasm" {
-                    eprintln!("✅ WASM MATCHED! Returning ScriptType::Wasm");
                     return Some(ScriptType::Wasm);
                 }
-                eprintln!("❌ WASM: No match, continuing...");
 
                 if SCRIPT_JS_MIMES.contains(&ty_trimmed) {
                     Some(ScriptType::Classic)

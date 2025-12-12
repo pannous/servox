@@ -48,13 +48,10 @@ fn get_cache() -> &'static RwLock<HashMap<u64, Vec<u8>>> {
 /// # Returns
 /// JavaScript code that loads the WASM module and exports its functions
 pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -> Result<String, CompileError> {
-    eprintln!("💥 INSIDE wasm_compiler::compile_wat_to_js!");
     log::info!("WASM: Compiling {} ({} bytes)", filename, source.len());
 
     // Check cache first
-    eprintln!("🔑 Calculating cache key...");
     let cache_key = calculate_hash(source);
-    eprintln!("📦 Checking cache (key: {})...", cache_key);
     let wasm_binary = {
         // Check cache first - must drop read lock before attempting write
         let cached = {
@@ -63,14 +60,11 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
         };
 
         if let Some(binary) = cached {
-            eprintln!("✨ Cache HIT!");
             log::info!("WASM: Cache hit for {}", filename);
             binary
         } else {
-            eprintln!("🆕 Cache MISS - compiling WAT...");
             // Compile WAT to WASM binary
             let binary = compile_wat_internal(source, filename)?;
-            eprintln!("🎉 WAT compilation successful!");
             log::info!("WASM: Successfully compiled {} to {} bytes of WASM", filename, binary.len());
 
             // Store in cache (read lock is already dropped at this point)
@@ -87,27 +81,21 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
         }
     };
 
-    eprintln!("🎨 Generating JavaScript code from {} bytes of WASM binary...", wasm_binary.len());
 
     // Parse field names from WAT source (more reliable than name section)
-    eprintln!("🔍 Parsing field names from WAT source...");
     let field_names_json = parse_wat_field_names(source);
-    eprintln!("📋 Field names: {}", field_names_json);
 
     // Generate JavaScript byte array directly (no base64 encoding needed!)
     // This is the approach that works reliably in Servo
-    eprintln!("📊 Starting byte array conversion...");
     let byte_array = wasm_binary
         .iter()
         .map(|b| format!("0x{:02X}", b))
         .collect::<Vec<_>>()
         .join(", ");
 
-    eprintln!("✅ Byte array converted! Length: {} chars", byte_array.len());
 
     // Generate JavaScript that uses direct byte array
     // This avoids base64/atob issues and works perfectly in Servo
-    eprintln!("🔨 Formatting JavaScript wrapper...");
     let mut js_code = format!(
         r#"
 (function() {{
@@ -400,8 +388,6 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
         }
     }
 
-    eprintln!("🎉 JavaScript wrapper complete! Total size: {} chars", js_code.len());
-    eprintln!("🚀 Returning compiled JS to caller...");
 
     Ok(js_code)
 }
@@ -411,19 +397,12 @@ fn compile_wat_internal(source: &str, filename: &str) -> Result<Vec<u8>, Compile
     // Check if input is already binary WASM (starts with magic number \0asm)
     let source_bytes = source.as_bytes();
     let wasm_binary = if source_bytes.len() >= 4 && &source_bytes[0..4] == b"\0asm" {
-        eprintln!("🔍 Detected binary WASM format (magic: \\0asm)");
         log::info!("WASM: Input is already binary WASM, using directly");
         // Already compiled, use the bytes
         source_bytes.to_vec()
     } else {
         // Otherwise, parse as WAT text format
-        eprintln!("🔧 Calling wat::parse_str...");
-        let result = wat::parse_str(source);
-        match &result {
-            Ok(bytes) => eprintln!("✅ wat::parse_str succeeded! {} bytes", bytes.len()),
-            Err(e) => eprintln!("❌ wat::parse_str FAILED: {}", e),
-        }
-        result.map_err(|e| CompileError::ParseError(format!("in {}: {}", filename, e)))?
+        wat::parse_str(source).map_err(|e| CompileError::ParseError(format!("in {}: {}", filename, e)))?
     };
 
     // Inject getter/setter functions for WASM GC structs
@@ -432,7 +411,6 @@ fn compile_wat_internal(source: &str, filename: &str) -> Result<Vec<u8>, Compile
 
 /// Inject getter/setter functions for WASM GC struct fields
 fn inject_gc_accessors(wasm_binary: &[u8]) -> Result<Vec<u8>, CompileError> {
-    eprintln!("🔬 Analyzing WASM for GC structs...");
 
     // Automatic getter/setter injection for WASM GC structs is complex and requires:
     // - Parsing type section to detect struct definitions
@@ -465,9 +443,6 @@ fn inject_gc_accessors(wasm_binary: &[u8]) -> Result<Vec<u8>, CompileError> {
     //
     // Then in JavaScript: get_val(box) instead of box.val
 
-    eprintln!("ℹ️  Automatic accessor injection not implemented (requires complex WASM transformation)");
-    eprintln!("💡 Please export getter/setter functions manually in your WASM code");
-    eprintln!("   See test-wasm-gc-with-getters.html for a working example");
 
     Ok(wasm_binary.to_vec())
 }
@@ -498,7 +473,6 @@ fn parse_wat_field_names(source: &str) -> String {
                     let type_name = &trimmed[start..start + end];
                     current_type = Some(type_name.to_string());
                     field_index = 0;
-                    eprintln!("🏷️  Found type: {}", type_name);
                 }
             }
         }
@@ -516,7 +490,6 @@ fn parse_wat_field_names(source: &str) -> String {
                             let name_part = &trimmed[field_start + 1..];
                             if let Some(end) = name_part.find(|c: char| c.is_whitespace() || c == ')') {
                                 let field_name = &name_part[..end];
-                                eprintln!("  📌 Field {}: {}", field_index, field_name);
 
                                 type_fields
                                     .entry(type_name.clone())
@@ -609,7 +582,6 @@ fn parse_name_section(wasm_binary: &[u8]) -> String {
             pos += name_len as usize;
 
             if section_name == b"name" {
-                eprintln!("📝 Found 'name' custom section");
 
                 // Parse name section subsections
                 while pos < section_end {
@@ -627,7 +599,6 @@ fn parse_name_section(wasm_binary: &[u8]) -> String {
 
                     if subsection_id == 12 {
                         // Field names subsection
-                        eprintln!("🏷️  Found field names subsection");
                         field_names_map = parse_field_names_subsection(&wasm_binary[pos..subsection_end]);
                     }
 
@@ -660,7 +631,6 @@ fn parse_field_names_subsection(data: &[u8]) -> HashMap<String, Vec<String>> {
     let (type_count, count_len) = read_leb128_u32(&data[pos..]);
     pos += count_len;
 
-    eprintln!("📊 Parsing {} types", type_count);
 
     for _ in 0..type_count {
         if pos >= data.len() {
@@ -677,7 +647,6 @@ fn parse_field_names_subsection(data: &[u8]) -> HashMap<String, Vec<String>> {
 
         let mut field_names = Vec::new();
 
-        eprintln!("  Type {}: {} fields", type_idx, field_count);
 
         for _ in 0..field_count {
             if pos >= data.len() {
@@ -701,7 +670,6 @@ fn parse_field_names_subsection(data: &[u8]) -> HashMap<String, Vec<String>> {
             pos += name_len as usize;
 
             if let Ok(name) = std::str::from_utf8(name_bytes) {
-                eprintln!("    Field: {}", name);
                 field_names.push(name.to_string());
             }
         }
