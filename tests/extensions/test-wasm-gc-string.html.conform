@@ -8,12 +8,12 @@
   <script type="text/wast">
 (module
   (type $string (array (mut i8)))
-  (type $Box (struct (field $val (mut (ref $string)))))
-  (func $Box.new (export "newBox") (param (ref $string)) (result (ref $Box))
+  (type $Box (struct (field $val (mut string))))
+  (func $Box.new (export "newBox") (param string) (result (ref $Box))
     local.get 0
     struct.new $Box
   )
-  (global $box (export "box") (ref $Box) (struct.new $Box "hello"))
+  (global $box (export "box") (ref $Box) (struct.new $Box (array.new_fixed $string 5 (i32.const 104) (i32.const 101) (i32.const 108) (i32.const 108) (i32.const 111))))
 )
   </script>
 

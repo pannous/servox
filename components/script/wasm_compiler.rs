@@ -292,12 +292,23 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                                     if (fieldNames) {{
                                         const index = fieldNames.indexOf(prop);
                                         if (index !== -1) {{
-                                            return target[index];
+                                            const value = target[index];
+                                            // Auto-convert string arrays to JS strings
+                                            if (value && typeof value === 'object' && value[0] !== undefined && typeof value[0] === 'number' && value[0] >= 0 && value[0] <= 255) {{
+                                                return wasmStringToJs(value) || value;
+                                            }}
+                                            return value;
                                         }}
                                     }}
                                 }}
 
-                                return target[prop];
+                                // Handle numeric property access
+                                const value = target[prop];
+                                // Auto-convert string arrays to JS strings
+                                if (value && typeof value === 'object' && value[0] !== undefined && typeof value[0] === 'number' && value[0] >= 0 && value[0] <= 255) {{
+                                    return wasmStringToJs(value) || value;
+                                }}
+                                return value;
                             }},
                             set(target, prop, value) {{
                                 // Try to map field name to index for setters
@@ -479,6 +490,9 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
 /// Transform WAT source to replace 'string' type with GC array representation
 /// Strings are represented as (array i8) for UTF-8 encoding
 fn transform_string_types(source: &str) -> String {
+    // Check if $string type is already defined
+    let has_string_type = source.contains("(type $string");
+
     let mut result = String::new();
     let mut in_module = false;
     let mut string_type_added = false;
@@ -495,22 +509,17 @@ fn transform_string_types(source: &str) -> String {
         }
 
         // Add string type definition right after module start, before any other content
-        if in_module && !string_type_added && !trimmed.is_empty() && !trimmed.starts_with(";") {
+        // Skip if already defined in source
+        if in_module && !string_type_added && !has_string_type && !trimmed.is_empty() && !trimmed.starts_with(";") {
             // Insert string type before any module content
             result.push_str("  ;; String type: array of i8 (UTF-8)\n");
             result.push_str("  (type $string (array (mut i8)))\n\n");
             string_type_added = true;
         }
 
-        // Transform string literals in struct.new
-        if trimmed.contains("struct.new") && trimmed.contains("\"") {
-            result.push_str(&transform_string_literal_in_line(line));
-            result.push('\n');
-            continue;
-        }
-
-        // Replace 'string' type references with '(ref null $string)'
-        let transformed = if line.contains("string") && !line.contains("$string") {
+        // First, replace 'string' type references with '(ref null $string)'
+        // But skip if line already uses $string type
+        let type_transformed = if line.contains("string") && !line.contains("$string") && !line.contains("(type $string") {
             // Replace type references: (mut string) -> (mut (ref null $string))
             let mut new_line = line.to_string();
 
@@ -524,6 +533,13 @@ fn transform_string_types(source: &str) -> String {
             new_line
         } else {
             line.to_string()
+        };
+
+        // Then, transform string literals in struct.new
+        let transformed = if trimmed.contains("struct.new") && trimmed.contains("\"") {
+            transform_string_literal_in_line(&type_transformed)
+        } else {
+            type_transformed
         };
 
         result.push_str(&transformed);
