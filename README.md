@@ -1,9 +1,15 @@
-# Servo Fork
+# Servox - Servo Fork with WASM GC & TypeScript
 Fork of official [servo](https://github.com/servo/servo) browser (engine) with the following modifications:
 
-✅ <script type="text/wast">  
-✅ <script type="text/typescript">  
-✅ <script type="application/wasm" src="…">  
+## Installation
+```bash
+brew tap pannous/servox
+brew install servox
+```
+
+✅ <script type="text/wast">
+✅ <script type="text/typescript">
+✅ <script type="application/wasm" src="…">
 
 E.g. 
 ```
@@ -33,13 +39,4 @@ E.g.
 <script type="text/typescript">
   console.log(box.val);
 </script>
-```
-
-## Installation
-
-Currently this is more for experimental development purposes but if you want to play with it without re-compiling you can
-
-```bash
-brew tap pannous/servox
-brew install servox
 ```

@@ -10,7 +10,7 @@ This single command:
 1. Locates release binary (target/release or /opt/cargo/release)
 2. Creates tarball with binary and resources
 3. Publishes GitHub release with auto-generated notes
-4. Updates Homebrew formula in homebrew-servo tap
+4. Updates Homebrew formula in homebrew-servox tap
 5. Pushes to GitHub
 
 ## Build Release Binary First
@@ -22,15 +22,15 @@ This single command:
 
 ## What Gets Published
 
-- Binary package: `servo-{VERSION}-{OS}-{ARCH}.tar.gz`
+- Binary package: `servox-{VERSION}-{OS}-{ARCH}.tar.gz`
 - GitHub release with feature notes
 - Updated Homebrew formula with SHA256
 
 ## Installation (for users)
 
 ```bash
-brew tap pannous/servo
-brew install servo
+brew tap pannous/servox
+brew install servox
 ```
 
 **Installation time**: ~30 seconds (vs 30+ minutes building from source!)

@@ -5,11 +5,11 @@ set -e
 VERSION="$(date +%Y.%m.%d)"
 ARCH=$(uname -m)
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-RELEASE_NAME="servo-${VERSION}-${OS}-${ARCH}"
+RELEASE_NAME="servox-${VERSION}-${OS}-${ARCH}"
 TARBALL="/tmp/${RELEASE_NAME}.tar.gz"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🚀 Servo Homebrew Release v${VERSION}"
+echo "🚀 Servox Homebrew Release v${VERSION}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -65,7 +65,7 @@ if ! gh auth status 2>&1 | grep -q "workflow"; then
     echo "   Running: gh auth refresh -h github.com -s workflow"
     gh auth refresh -h github.com -s workflow || {
         echo "   ❌ Auth failed. Create release manually:"
-        echo "      https://github.com/pannous/servo/releases/new"
+        echo "      https://github.com/pannous/servox/releases/new"
         echo "      Tag: v${VERSION}"
         echo "      Upload: ${TARBALL}"
         exit 1
@@ -75,8 +75,8 @@ fi
 # Create release
 gh release create "v${VERSION}" \
     "${TARBALL}" \
-    --repo pannous/servo \
-    --title "Servo ${VERSION}" \
+    --repo pannous/servox \
+    --title "Servox ${VERSION}" \
     --notes "Binary release with WASM GC and TypeScript support
 
 ## ✨ Features
@@ -89,14 +89,14 @@ gh release create "v${VERSION}" \
 ## 🍺 Installation
 
 \`\`\`bash
-brew tap pannous/servo
+brew tap pannous/servox
 brew install servo
 \`\`\`
 
 ## 🧪 Quick Test
 
 \`\`\`bash
-curl -O https://raw.githubusercontent.com/pannous/servo/main/test-all.html
+curl -O https://raw.githubusercontent.com/pannous/servox/main/test-all.html
 servo test-all.html
 \`\`\`
 
@@ -107,9 +107,9 @@ servo test-all.html
 - **Build**: Release optimized
 
 ## 🔗 Links
-- [Source Code](https://github.com/pannous/servo)
+- [Source Code](https://github.com/pannous/servox)
 - [Homebrew Tap](https://github.com/pannous/homebrew-servox)
-- [All Tests](https://github.com/pannous/servo/blob/main/test-all.html)" 2>&1
+- [All Tests](https://github.com/pannous/servox/blob/main/test-all.html)" 2>&1
 
 if [ $? -eq 0 ]; then
     echo "   ✅ Release published!"
@@ -118,7 +118,7 @@ else
     exit 1
 fi
 
-DOWNLOAD_URL="https://github.com/pannous/servo/releases/download/v${VERSION}/${RELEASE_NAME}.tar.gz"
+DOWNLOAD_URL="https://github.com/pannous/servox/releases/download/v${VERSION}/${RELEASE_NAME}.tar.gz"
 
 # Step 4: Update Homebrew formula
 echo ""
@@ -139,8 +139,8 @@ cd /tmp/homebrew-servox
 # Update servox.rb
 cat > servox.rb << EOF
 class Servox < Formula
-  desc "Servo browser with WASM GC and TypeScript support"
-  homepage "https://github.com/pannous/servo"
+  desc "Servox browser with WASM GC and TypeScript support"
+  homepage "https://github.com/pannous/servox"
   license "MPL-2.0"
   version "${VERSION}"
 
@@ -157,7 +157,7 @@ class Servox < Formula
 
   def caveats
     <<~EOS
-      🎉 Servo with WASM GC and TypeScript support!
+      🎉 Servox with WASM GC and TypeScript support!
 
       Features:
         • <script type="text/wast"> - WebAssembly Text format
@@ -166,12 +166,12 @@ class Servox < Formula
         • Direct property access: box.val, box[0]
 
       Quick test:
-        curl -O https://raw.githubusercontent.com/pannous/servo/main/test-all.html
+        curl -O https://raw.githubusercontent.com/pannous/servox/main/test-all.html
         servo test-all.html
 
       Links:
-        Source: https://github.com/pannous/servo
-        Tests:  https://github.com/pannous/servo/tree/main/test-*.html
+        Source: https://github.com/pannous/servox
+        Tests:  https://github.com/pannous/servox/tree/main/test-*.html
     EOS
   end
 
@@ -206,7 +206,7 @@ echo "✅ Release v${VERSION} Complete!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "🍺 Users can now install:"
-echo "   brew tap pannous/servox"
+echo "   brew tap pannous/servoxx"
 echo "   brew install servox"
 echo ""
 echo "📦 Release details:"
@@ -214,7 +214,7 @@ echo "   URL: ${DOWNLOAD_URL}"
 echo "   SHA: ${SHA256}"
 echo ""
 echo "🔗 View release:"
-echo "   https://github.com/pannous/servo/releases/tag/v${VERSION}"
+echo "   https://github.com/pannous/servox/releases/tag/v${VERSION}"
 echo ""
 echo "⚡ Install time: ~30 seconds (instead of 30+ minutes!)"
 echo ""
