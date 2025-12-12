@@ -1,56 +1,32 @@
 # Creating Binary Releases
 
-## Build Release Binary
+## One-Command Release
+
+```bash
+./release.sh 2025.12.12
+```
+
+This single command:
+1. Locates release binary (target/release or /opt/cargo/release)
+2. Creates tarball with binary and resources
+3. Publishes GitHub release with auto-generated notes
+4. Updates Homebrew formula in homebrew-servo tap
+5. Pushes to GitHub
+
+## Build Release Binary First
 
 ```bash
 ./mach build --release
-# This takes 30-60 minutes depending on your machine
+# Takes 30-60 minutes depending on your machine
 ```
 
-## Create Release Package
+## What Gets Published
 
-```bash
-./create-release.sh 2025.12.12
-```
+- Binary package: `servo-{VERSION}-{OS}-{ARCH}.tar.gz`
+- GitHub release with feature notes
+- Updated Homebrew formula with SHA256
 
-This creates:
-- `/tmp/servo-2025.12.12-darwin-arm64.tar.gz`
-- Calculates SHA256 hash
-- Provides GitHub release command
-
-## Publish to GitHub
-
-```bash
-# Use the command from create-release.sh output
-gh release create v2025.12.12 \
-  /tmp/servo-2025.12.12-darwin-arm64.tar.gz \
-  --title "Servo 2025.12.12" \
-  --notes "Binary release with WASM GC and TypeScript support"
-```
-
-## Update Homebrew Formula
-
-1. Update `servo.rb` in homebrew-servo repo:
-   ```ruby
-   url "https://github.com/pannous/servo/releases/download/v2025.12.12/servo-2025.12.12-darwin-arm64.tar.gz"
-   sha256 "abc123..."  # Use SHA from create-release.sh
-   ```
-
-2. Commit and push:
-   ```bash
-   cd ~/homebrew-servo
-   git add servo.rb
-   git commit -m "Update to v2025.12.12"
-   git push
-   ```
-
-3. Test installation:
-   ```bash
-   brew upgrade servo
-   servo test-all.html
-   ```
-
-## Quick Install (for users)
+## Installation (for users)
 
 ```bash
 brew tap pannous/servo
