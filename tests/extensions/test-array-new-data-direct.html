@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test array.new_data</title></head>
+<body>
+  <h1>Test array.new_data support</h1>
+  <div id="log"></div>
+
+  <script type="text/wast">
+(module
+  (type $string (array (mut i8)))
+  (type $Box (struct (field $val (mut (ref $string)))))
+  (data $hello "hello")
+
+  (global $box (export "box") (ref $Box)
+    (struct.new $Box
+      (array.new_data $string $hello (i32.const 0) (i32.const 5))
+    )
+  )
+)
+  </script>
+
+  <script>
+    const log = (msg) => {
+      const p = document.createElement('p');
+      p.textContent = msg;
+      document.getElementById('log').appendChild(p);
+      console.log(msg);
+    };
+
+    window.addEventListener('wasmloaded', () => {
+      log('✅ WASM loaded with array.new_data');
+      log('box = ' + box);
+      log('box[0] = ' + box[0]);
+    });
+
+    window.addEventListener('wasmerror', (e) => {
+      log('❌ WASM error: ' + e.detail);
+    });
+
+    setTimeout(() => {
+      if (typeof box === 'undefined') {
+        log('❌ WASM module failed to load (box is undefined)');
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

@@ -14,15 +14,15 @@
     struct.new $Box
   )
   (data $hello "hello")
-
   (global $box (export "box") (ref $Box)
     (struct.new $Box
-      (array.new_data $string $hello (i32.const 0) (i32.const 5))
+      (array.new_canon_data $string "hello")
     )
   )
 )
   </script>
-
+  <!-- ⚠️ "hello" is currently black Magic and converted to -->
+<!-- (array.new_data $string $hello (i32.const 0) (i32.const 5)) ? -->
   <script>
     function log(msg) {
       const div = document.getElementById('log');
