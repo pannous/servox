@@ -31,6 +31,8 @@ E.g.
 )
   </script>
 <script type="text/typescript">
+  console.log(box.val);
+</script>
 ```
 
 ## Installation
@@ -40,7 +42,4 @@ Currently this is more for experimental development purposes but if you want to 
 ```bash
 brew tap pannous/servox
 brew install servox
-```
-console.log(box.val);
-</script>
 ```
