@@ -6,7 +6,7 @@ VERSION="$(date +%Y.%m.%d)"
 ARCH=$(uname -m)
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 RELEASE_NAME="servox-${VERSION}-${OS}-${ARCH}"
-TARBALL="/tmp/${RELEASE_NAME}.tar.gz"
+TARBALL="${RELEASE_NAME}.tar.gz"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🚀 Servox Homebrew Release v${VERSION}"
@@ -32,19 +32,19 @@ echo "   ✅ Found: ${BINARY_PATH} (${BINARY_SIZE})"
 # Step 2: Create tarball
 echo ""
 echo "📦 Step 2/5: Creating release tarball..."
-rm -rf "/tmp/${RELEASE_NAME}"
-mkdir -p "/tmp/${RELEASE_NAME}"
-cp "${BINARY_PATH}" "/tmp/${RELEASE_NAME}/"
-cp README.md "/tmp/${RELEASE_NAME}/" 2>/dev/null || true
-cp -r resources "/tmp/${RELEASE_NAME}/" 2>/dev/null || true
+rm -rf "${RELEASE_NAME}"
+mkdir -p "${RELEASE_NAME}"
+cp "${BINARY_PATH}" "${RELEASE_NAME}/"
+cp README.md "${RELEASE_NAME}/" 2>/dev/null || true
+cp -r resources "${RELEASE_NAME}/" 2>/dev/null || true
 
 # Include GStreamer libs if present
 if [ -d "/opt/cargo/release/lib" ]; then
     echo "   Including GStreamer libraries..."
-    cp -r /opt/cargo/release/lib "/tmp/${RELEASE_NAME}/"
+    cp -r /opt/cargo/release/lib "${RELEASE_NAME}/"
 elif [ -d "target/release/lib" ]; then
     echo "   Including GStreamer libraries..."
-    cp -r target/release/lib "/tmp/${RELEASE_NAME}/"
+    cp -r target/release/lib "${RELEASE_NAME}/"
 fi
 
 cd /tmp
@@ -125,16 +125,16 @@ echo ""
 echo "🍺 Step 4/5: Updating Homebrew formula..."
 
 # Clone or update homebrew-servox
-if [ ! -d "/tmp/homebrew-servox" ]; then
+if [ ! -d "homebrew-servox" ]; then
     echo "   Cloning homebrew-servox..."
-    git clone https://github.com/pannous/homebrew-servox /tmp/homebrew-servox
+    git clone https://github.com/pannous/homebrew-servox homebrew-servox
 else
     echo "   Updating homebrew-servox..."
-    cd /tmp/homebrew-servox
+    cd homebrew-servox
     git pull
 fi
 
-cd /tmp/homebrew-servox
+cd homebrew-servox
 
 # Update servox.rb
 cat > servox.rb << EOF
@@ -168,10 +168,10 @@ class Servox < Formula
         • Direct property access: box.val, box[0]
 
       Quick test:
-        servox https://pannous.github.io/servox/test-all.html
+        servox https://raw.githack.com/pannous/servox/main/test-all.html
 
       Links:
-        Live Demo: https://pannous.github.io/servox/test-all.html
+        Live Demo: https://raw.githack.com/pannous/servox/main/test-all.html
         Source: https://github.com/pannous/servox
         Tests:  https://github.com/pannous/servox/tree/main/test-*.html
     EOS

@@ -8,7 +8,7 @@ brew install servox
 ```
 
 ## Live Demo
-🚀 **[Try it now: test-all.html](https://pannous.github.io/servox/test-all.html)**
+🚀 **[Try it now: test-all.html](https://raw.githack.com/pannous/servox/main/test-all.html)**
 
 ## Features
 ✅ <script type="text/wast">
