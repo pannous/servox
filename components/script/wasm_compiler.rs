@@ -82,8 +82,16 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
     };
 
 
-    // Parse field names from WAT source (more reliable than name section)
-    let field_names_json = parse_wat_field_names(source);
+    // Try to get field names from compiled WASM binary's name section first
+    let mut field_names_json = parse_name_section(&wasm_binary);
+
+    // If name section doesn't have field names, fall back to WAT source parsing
+    if field_names_json == "{}" {
+        field_names_json = parse_wat_field_names(source);
+    } else {
+        // Name section only has indices, augment with type name from WAT source
+        field_names_json = augment_with_type_name(source, &field_names_json);
+    }
 
     // Generate JavaScript byte array directly (no base64 encoding needed!)
     // This is the approach that works reliably in Servo
@@ -654,6 +662,51 @@ fn calculate_hash(source: &str) -> u64 {
     hasher.finish()
 }
 
+/// Augment name section field names with type name from WAT source
+fn augment_with_type_name(source: &str, name_section_json: &str) -> String {
+    // Extract first struct type name from WAT source
+    let type_name = extract_first_type_name(source);
+
+    // Parse the name section JSON which has format like {"type_0": ["field1", "field2"]}
+    if let Ok(parsed) = serde_json::from_str::<HashMap<String, Vec<String>>>(name_section_json) {
+        // Get the first type's field names
+        if let Some((_, fields)) = parsed.iter().next() {
+            // Build the new format with type name and fields
+            let fields_json = fields
+                .iter()
+                .map(|f| format!("\"{}\"", f))
+                .collect::<Vec<_>>()
+                .join(",");
+
+            return format!(
+                r#"{{"default":{{"typeName":"{}","fields":[{}]}}}}"#,
+                type_name, fields_json
+            );
+        }
+    }
+
+    // Fallback to WAT source parsing if name section parsing fails
+    parse_wat_field_names(source)
+}
+
+/// Extract the first struct type name from WAT source
+fn extract_first_type_name(source: &str) -> String {
+    for line in source.lines() {
+        let trimmed = line.trim();
+        // Look for type definitions: (type $typename (struct
+        if trimmed.contains("(type") && trimmed.contains("(struct") {
+            // Extract type name
+            if let Some(start) = trimmed.find("$") {
+                if let Some(end) = trimmed[start..].find(|c: char| c.is_whitespace()) {
+                    let type_name = &trimmed[start + 1..start + end];
+                    return type_name.to_string();
+                }
+            }
+        }
+    }
+    "WasmGcStruct".to_string()
+}
+
 /// Parse field names and type names directly from WAT source
 /// Looks for struct field definitions like: (field $name (mut i32))
 /// Returns JSON with structure: { "default": { "typeName": "box", "fields": ["val"] } }
@@ -681,24 +734,22 @@ fn parse_wat_field_names(source: &str) -> String {
         // Look for field definitions: (field $fieldname ...
         if let Some(ref type_name) = current_type {
             if trimmed.contains("(field") {
-                // Find the LAST $ on the line (field name, not type name)
-                // This handles cases like: (type $box (struct (field $val (mut i32))))
-                if let Some(field_start) = trimmed.rfind("$") {
-                    // Make sure this $ is after "(field"
-                    if let Some(field_marker) = trimmed.find("(field") {
-                        if field_start > field_marker {
-                            // Find end of field name (space or parenthesis)
-                            let name_part = &trimmed[field_start + 1..];
-                            if let Some(end) = name_part.find(|c: char| c.is_whitespace() || c == ')') {
-                                let field_name = &name_part[..end];
+                // Find the FIRST $ AFTER "(field" marker (this is the field name)
+                // Not the last $, which might be a type reference like $string
+                if let Some(field_marker) = trimmed.find("(field") {
+                    let after_field = &trimmed[field_marker + 6..]; // Skip "(field"
+                    if let Some(field_start) = after_field.find("$") {
+                        // Find end of field name (space or parenthesis)
+                        let name_part = &after_field[field_start + 1..];
+                        if let Some(end) = name_part.find(|c: char| c.is_whitespace() || c == ')') {
+                            let field_name = &name_part[..end];
 
-                                type_fields
-                                    .entry(type_name.clone())
-                                    .or_insert_with(Vec::new)
-                                    .push(field_name.to_string());
+                            type_fields
+                                .entry(type_name.clone())
+                                .or_insert_with(Vec::new)
+                                .push(field_name.to_string());
 
-                                field_index += 1;
-                            }
+                            field_index += 1;
                         }
                     }
                 }
@@ -737,9 +788,8 @@ fn parse_wat_field_names(source: &str) -> String {
     }
 }
 
-/// Parse WASM name section to extract field names (fallback method)
-/// Returns JSON object mapping type names to field name arrays
-#[allow(dead_code)]
+/// Parse WASM name section to extract field names
+/// Returns JSON object mapping type indices to field name arrays
 fn parse_name_section(wasm_binary: &[u8]) -> String {
     // WASM binary format:
     // - Magic number: 0x00 0x61 0x73 0x6D (\0asm)
