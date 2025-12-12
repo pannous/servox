@@ -5,22 +5,20 @@ set -e  # Exit on error
 
 echo "🔄 Syncing with upstream servo/servo:main..."
 
+
 # Fetch latest from upstream
 echo "📥 Fetching from upstream..."
+git remote update
+git pull --all -s recursive -X theirs
 git fetch upstream
+
+# Check for uncommitted changes
+git commit -a --all --allow-empty-message -m 'before sync'
 
 # Get current branch
 CURRENT_BRANCH=$(git branch --show-current)
 echo "📍 Current branch: $CURRENT_BRANCH"
 
-# Check for uncommitted changes
-if ! git diff-index --quiet HEAD --; then
-    echo "⚠️  You have uncommitted changes. Stashing them..."
-    git stash push -m "Auto-stash before upstream merge at $(date)"
-    STASHED=true
-else
-    STASHED=false
-fi
 
 # Merge upstream/main into current branch
 echo "🔀 Merging upstream/main into $CURRENT_BRANCH..."
