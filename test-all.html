@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head><title>WASM Comprehensive Test</title></head>
+<body>
+  <h1>WASM All Features Test</h1>
+  <div id="log"></div>
+
+  <!-- Test 1: Basic inline WASM -->
+  <script type="text/wast">
+(module
+  (func $add (export "add") (param i32 i32) (result i32)
+    local.get 0
+    local.get 1
+    i32.add)
+)
+  </script>
+
+  <!-- Test 2: GC struct with named fields -->
+  <script type="text/wast">
+(module
+  (type $box (struct (field $val (mut i32))))
+
+  (func $makeBox (export "makeBox") (param i32) (result (ref $box))
+    local.get 0
+    struct.new $box)
+
+  (global $globalBox (export "globalBox") (ref $box)
+    (struct.new $box (i32.const 99)))
+)
+  </script>
+
+  <script>
+    const log = (msg, ok = true) => {
+      const p = document.createElement('p');
+      p.textContent = msg;
+      p.style.color = ok ? 'green' : 'red';
+      document.getElementById('log').appendChild(p);
+      console.log(msg);
+    };
+
+    window.addEventListener('wasmloaded', () => {
+      try {
+        // Test 1: Basic function
+        log(window.add(2, 3) === 5 ? '✅ add(2,3) = 5' : '❌ add failed');
+
+        // Test 2: GC struct creation
+        const box = window.makeBox(42);
+        log(box ? '✅ makeBox created' : '❌ makeBox failed');
+
+        // Test 3: Field access by index
+        log(box[0] === 42 ? '✅ box[0] = 42' : '❌ box[0] failed');
+
+        // Test 4: Field access by name
+        log(box.val === 42 ? '✅ box.val = 42' : '❌ box.val failed');
+
+        // Test 5: Field setter
+        box.val = 77;
+        log(box.val === 77 ? '✅ box.val = 77 (setter)' : '❌ setter failed');
+
+        // Test 6: Global export
+        log(globalBox ? '✅ globalBox exported' : '❌ globalBox failed');
+        log(globalBox.val === 99 ? '✅ globalBox.val = 99' : '❌ globalBox.val failed');
+
+        // Test 7: toString
+        const str = '' + box;
+        log(str.includes('77') ? '✅ toString: ' + str : '❌ toString failed', str.includes('77'));
+
+        log('=== ALL TESTS COMPLETE ===', true);
+      } catch (e) {
+        log('❌ ERROR: ' + e.message, false);
+      }
+    });
+  </script>
+</body>
+</html>
