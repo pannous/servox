@@ -374,6 +374,8 @@ pub fn compile_wat_to_js(source: &str, filename: &str) -> Result<String, Compile
                 }}
 
                 console.log('WASM module loaded successfully');
+                // Dispatch custom event so pages can listen for WASM completion
+                window.dispatchEvent(new Event('wasmloaded'));
             }})
             .catch(function(e) {{
                 console.error('WASM instantiation error:', e);

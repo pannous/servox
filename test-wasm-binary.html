@@ -8,14 +8,13 @@
   <script type="application/wasm" src="test.wasm"></script>
 
   <script>
-    // DONE window.onload = () => {
-    window.onload = () => {
+    window.addEventListener('wasmloaded', () => {
       if (typeof window.getValue === 'function') {
         result.textContent = '✅ Binary WASM loaded! getValue() = ' + window.getValue();
       } else {
         result.textContent = '❌ getValue() not found';
       }
-    };
+    });
   </script>
 </body>
 </html>
