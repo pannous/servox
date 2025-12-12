@@ -153,9 +153,9 @@ class Servo < Formula
 
   def install
     bin.install "servo"
-    # Install GStreamer libraries
+    # Install GStreamer libraries next to binary (rpath expects bin/lib/)
     if (buildpath/"lib").exist?
-      lib.install Dir["lib/*"]
+      (bin/"lib").install Dir["lib/*"]
     end
   end
 
