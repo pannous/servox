@@ -5,18 +5,14 @@
   <h1>Testing External text/wast File</h1>
   <div id="result">Waiting...</div>
 
-  <script type="text/wast" src="test.wast"></script>
-
-  <script>
-    setTimeout(() => {
-      const result = document.getElementById('result');
-      if (typeof window.add === 'function' ) {
-        const sum = window.add(5, 3);
-        result.textContent = `✅ WAST loaded! add(5,3) = ${sum},`;
-      } else {
-        result.textContent = '❌ Functions not found';
-      }
-    }, 1000);
+  <script type="text/wast" src="test.wast">
+    const result = document.getElementById('result');
+    if (typeof window.add === 'function' ) {
+      const sum = window.add(5, 3);
+      result.textContent = `✅ WAST loaded! add(5,3) = ${sum},`;
+    } else {
+      result.textContent = '❌ Functions not found';
+    }
   </script>
 </body>
 </html>

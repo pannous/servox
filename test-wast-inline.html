@@ -13,14 +13,14 @@
   </script>
 
   <script>
-    setTimeout(() => {
+    window.addEventListener('wasmloaded', () => {
       const result = document.getElementById('result');
       if (typeof window.getValue === 'function') {
         result.textContent = '✅ WASM loaded! getValue() = ' + window.getValue();
       } else {
         result.textContent = '❌ getValue() not found';
       }
-    }, 1000);
+    });
   </script>
 </body>
 </html>
