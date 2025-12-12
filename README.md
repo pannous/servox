@@ -22,7 +22,7 @@ E.g.
     </script>
 ```
 
-💡exports are immediately available to JavaScript,  even gc objects!
+💡exports are immediately available to TypeScript,  even gc objects!
 
 ```
 <script type="text/wast">
