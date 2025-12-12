@@ -74,12 +74,13 @@ fonts_traits = { path = "components/shared/fonts" }
 freetype-sys = "0.20"
 gleam = "0.15"
 glow = "0.16.0"
-gstreamer = { version = "0.24", features = ["v1_18"] }
-gstreamer-base = "0.24"
-gstreamer-gl = "0.24"
-gstreamer-gl-sys = "0.24"
-gstreamer-sys = "0.24"
-gstreamer-video = "0.24"
+# GStreamer disabled - breaks with library dependencies
+# gstreamer = { version = "0.24", features = ["v1_18"] }
+# gstreamer-base = "0.24"
+# gstreamer-gl = "0.24"
+# gstreamer-gl-sys = "0.24"
+# gstreamer-sys = "0.24"
+# gstreamer-video = "0.24"
 harfbuzz-sys = "0.6.1"
 headers = "0.4"
 hitrace = "0.1.5"
@@ -150,7 +151,7 @@ serde_core = "1.0.226"
 serde_json = "1.0"
 servo-media = { git = "https://github.com/servo/media" }
 servo-media-dummy = { git = "https://github.com/servo/media" }
-servo-media-gstreamer = { git = "https://github.com/servo/media" }
+# servo-media-gstreamer = { git = "https://github.com/servo/media" }
 servo-tracing = { path = "components/servo_tracing" }
 servo_arc = { git = "https://github.com/servo/stylo", branch = "2025-11-01" }
 sha1 = "0.10"

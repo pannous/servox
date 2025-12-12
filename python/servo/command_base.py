@@ -904,8 +904,9 @@ class CommandBase(object):
 
         if "-p" not in cargo_args:  # We're building specific package, that may not have features
             features += list(self.features)
-            if self.enable_media:
-                features.append("media-gstreamer")
+            # GStreamer disabled - library dependency issues
+            # if self.enable_media:
+            #     features.append("media-gstreamer")
             if self.config["build"]["debug-mozjs"] or debug_mozjs:
                 features.append("debugmozjs")
 
