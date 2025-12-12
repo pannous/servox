@@ -1,0 +1,7 @@
+{
+  "temp-session-id": {
+    "permissionMode": "bypassPermissions",
+    "backendVersion": "1.2.0",
+    "cwd": "/opt/other/servo-light"
+  }
+}
