@@ -16,10 +16,10 @@ echo ""
 # Step 1: Find and verify binary
 echo "📦 Step 1/5: Locating release binary..."
 BINARY_PATH=""
-if [ -f "/opt/cargo/release/servo" ]; then
-    BINARY_PATH="/opt/cargo/release/servo"
-elif [ -f "target/release/servo" ]; then
-    BINARY_PATH="target/release/servo"
+if [ -f "/opt/cargo/release/servox" ]; then
+    BINARY_PATH="/opt/cargo/release/servox"
+elif [ -f "target/release/servox" ]; then
+    BINARY_PATH="target/release/servox"
 else
     echo "❌ No release binary found!"
     echo "   Run: ./mach build --release"
@@ -90,14 +90,14 @@ gh release create "v${VERSION}" \
 
 \`\`\`bash
 brew tap pannous/servox
-brew install servo
+brew install servox
 \`\`\`
 
 ## 🧪 Quick Test
 
 \`\`\`bash
 curl -O https://raw.githubusercontent.com/pannous/servox/main/test-all.html
-servo test-all.html
+servox test-all.html
 \`\`\`
 
 ## 📦 Platform
@@ -152,7 +152,7 @@ class Servox < Formula
   end
 
   def install
-    bin.install "servo"
+    bin.install "servox"
     (share/"servox").install "resources" if File.exist?("resources")
     (bin/"lib").install Dir["lib/*"] if File.exist?("lib")
   end
@@ -169,7 +169,7 @@ class Servox < Formula
 
       Quick test:
         curl -O https://raw.githubusercontent.com/pannous/servox/main/test-all.html
-        servo test-all.html
+        servox test-all.html
 
       Links:
         Source: https://github.com/pannous/servox
