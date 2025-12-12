@@ -107,8 +107,28 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
 
         console.log('WASM: Instantiating module (' + wasmBytes.length + ' bytes)...');
 
-        // Instantiate directly from byte array
-        WebAssembly.instantiate(wasmBytes)
+        // Build import object with all global functions automatically
+        const importObject = {{}};
+
+        // Collect all callable globals
+        for (const key in window) {{
+            try {{
+                if (typeof window[key] === 'function' && key !== 'window') {{
+                    // Add to 'env' namespace (standard convention)
+                    if (!importObject.env) {{
+                        importObject.env = {{}};
+                    }}
+                    importObject.env[key] = window[key];
+                }}
+            }} catch (e) {{
+                // Skip inaccessible properties
+            }}
+        }}
+
+        console.log('WASM: Available imports:', Object.keys(importObject.env || {{}}).length, 'functions');
+
+        // Instantiate directly from byte array with imports
+        WebAssembly.instantiate(wasmBytes, importObject)
             .then(function(result) {{
                 console.log('WASM: Module instantiated successfully');
 
@@ -125,8 +145,8 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                             return obj;
                         }}
 
-                        // Get field names for this type if available
-                        const getFieldNames = function() {{
+                        // Get type info (name and fields) for this struct
+                        const getTypeInfo = function() {{
                             if (window.__wasmFieldNames && window.__wasmFieldNames.default) {{
                                 return window.__wasmFieldNames.default;
                             }}
@@ -141,7 +161,9 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                                     return function() {{
                                         // Try to get field values for display
                                         let fields = [];
-                                        const fieldNames = getFieldNames();
+                                        const typeInfo = getTypeInfo();
+                                        const typeName = (typeInfo && typeInfo.typeName) ? typeInfo.typeName : 'WasmGcStruct';
+                                        const fieldNames = (typeInfo && typeInfo.fields) ? typeInfo.fields : null;
 
                                         try {{
                                             if (fieldNames) {{
@@ -163,16 +185,18 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                                         }}
 
                                         if (fields.length > 0) {{
-                                            return 'WasmGcStruct{{' + fields.join(', ') + '}}';
+                                            return typeName + '{{' + fields.join(', ') + '}}';
                                         }}
-                                        return 'WasmGcStruct{{}}';
+                                        return typeName + '{{}}';
                                     }};
                                 }} else if (prop === Symbol.toPrimitive) {{
                                     // Handle Symbol.toPrimitive for string conversion
                                     return function(hint) {{
                                         if (hint === 'string' || hint === 'default') {{
                                             let fields = [];
-                                            const fieldNames = getFieldNames();
+                                            const typeInfo = getTypeInfo();
+                                            const typeName = (typeInfo && typeInfo.typeName) ? typeInfo.typeName : 'WasmGcStruct';
+                                            const fieldNames = (typeInfo && typeInfo.fields) ? typeInfo.fields : null;
 
                                             try {{
                                                 if (fieldNames) {{
@@ -190,22 +214,24 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                                             }} catch (e) {{}}
 
                                             if (fields.length > 0) {{
-                                                return 'WasmGcStruct{{' + fields.join(', ') + '}}';
+                                                return typeName + '{{' + fields.join(', ') + '}}';
                                             }}
-                                            return 'WasmGcStruct{{}}';
+                                            return typeName + '{{}}';
                                         }}
                                         // For number hint, return NaN to avoid conversion errors
                                         return NaN;
                                     }};
                                 }} else if (prop === Symbol.toStringTag) {{
-                                    return 'WasmGcStruct';
+                                    const typeInfo = getTypeInfo();
+                                    return (typeInfo && typeInfo.typeName) ? typeInfo.typeName : 'WasmGcStruct';
                                 }} else if (prop === '__wasmGcWrapped') {{
                                     return true;
                                 }}
 
                                 // Try to map field name to index
                                 if (typeof prop === 'string') {{
-                                    const fieldNames = getFieldNames();
+                                    const typeInfo = getTypeInfo();
+                                    const fieldNames = (typeInfo && typeInfo.fields) ? typeInfo.fields : null;
                                     if (fieldNames) {{
                                         const index = fieldNames.indexOf(prop);
                                         if (index !== -1) {{
@@ -219,7 +245,8 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                             set(target, prop, value) {{
                                 // Try to map field name to index for setters
                                 if (typeof prop === 'string') {{
-                                    const fieldNames = getFieldNames();
+                                    const typeInfo = getTypeInfo();
+                                    const fieldNames = (typeInfo && typeInfo.fields) ? typeInfo.fields : null;
                                     if (fieldNames) {{
                                         const index = fieldNames.indexOf(prop);
                                         if (index !== -1) {{
@@ -454,8 +481,9 @@ fn calculate_hash(source: &str) -> u64 {
     hasher.finish()
 }
 
-/// Parse field names directly from WAT source
+/// Parse field names and type names directly from WAT source
 /// Looks for struct field definitions like: (field $name (mut i32))
+/// Returns JSON with structure: { "default": { "typeName": "box", "fields": ["val"] } }
 fn parse_wat_field_names(source: &str) -> String {
     let mut type_fields: HashMap<String, Vec<String>> = HashMap::new();
     let mut current_type: Option<String> = None;
@@ -512,21 +540,27 @@ fn parse_wat_field_names(source: &str) -> String {
         }
     }
 
-    // Convert to JSON - use the first type's fields as default
+    // Convert to JSON - include both type name and fields
     if type_fields.is_empty() {
         "{}".to_string()
     } else {
-        // Create a mapping with a generic "default" key for the first struct type
-        let default_fields: Vec<String> = type_fields
-            .values()
-            .next()
-            .cloned()
-            .unwrap_or_default();
+        // Get the first type name and its fields
+        let (type_name, fields) = type_fields.iter().next().unwrap();
 
-        let mut result = HashMap::new();
-        result.insert("default".to_string(), default_fields);
+        // Strip the $ prefix from type name for cleaner display
+        let clean_type_name = type_name.strip_prefix("$").unwrap_or(type_name);
 
-        serde_json::to_string(&result).unwrap_or_else(|_| "{}".to_string())
+        // Build JSON manually to ensure correct structure
+        let fields_json = fields
+            .iter()
+            .map(|f| format!("\"{}\"", f))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        format!(
+            r#"{{"default":{{"typeName":"{}","fields":[{}]}}}}"#,
+            clean_type_name, fields_json
+        )
     }
 }
 
