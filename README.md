@@ -1,15 +1,9 @@
 # Servo Fork
 Fork of official [servo](https://github.com/servo/servo) browser (engine) with the following modifications:
 
-## Installation
-```bash
-brew tap pannous/servo
-brew install servo
-```
-
-✅ <script type="text/wast"> 
-✅ <script type="text/typescript">
-✅ <script type="application/wasm" src="…">
+✅ <script type="text/wast">  
+✅ <script type="text/typescript">  
+✅ <script type="application/wasm" src="…">  
 
 E.g. 
 ```
@@ -37,6 +31,16 @@ E.g.
 )
   </script>
 <script type="text/typescript">
+```
+
+## Installation
+
+Currently this is more for experimental development purposes but if you want to play with it without re-compiling you can
+
+```bash
+brew tap pannous/servox
+brew install servox
+```
 console.log(box.val);
 </script>
 ```
