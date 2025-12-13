@@ -30,6 +30,35 @@
     struct.new $Box
   )
 
+  ;; Getter for box.val field (field index 0)
+  (func (export "get_val") (param $box (ref $Box)) (result (ref $string))
+    local.get $box
+    struct.get $Box $val
+  )
+
+  ;; Setter for box.val field (field index 0)
+  (func (export "set_val") (param $box (ref $Box)) (param $newval (ref $string))
+    local.get $box
+    local.get $newval
+    struct.set $Box $val
+  )
+
+  ;; String constructor helper - create from length and fill with zeros
+  ;; JS will need to fill it byte by byte
+  (func (export "newString") (param $length i32) (result (ref $string))
+    i32.const 0  ;; Fill value
+    local.get $length  ;; Count
+    array.new $string
+  )
+
+  ;; Set a byte in a string array
+  (func (export "string_set_byte") (param $str (ref $string)) (param $index i32) (param $value i32)
+    (local.get $str)
+    (local.get $index)
+    (local.get $value)
+    (array.set $string)
+  )
+
   (start $init)
 )
   </script>

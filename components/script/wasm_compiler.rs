@@ -168,6 +168,34 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                         }}
                     }};
 
+                    // Helper to convert JS string to WASM string array (array i8, UTF-8)
+                    const jsStringToWasm = function(jsStr) {{
+                        if (typeof jsStr !== 'string') {{
+                            return jsStr; // Not a string, return as-is
+                        }}
+
+                        // Encode JS string to UTF-8 bytes
+                        const encoder = new TextEncoder();
+                        const bytes = encoder.encode(jsStr);
+
+                        // Create WASM string array using newString and string_set_byte
+                        if (window._wasmExports && window._wasmExports.newString && window._wasmExports.string_set_byte) {{
+                            try {{
+                                const wasmStr = window._wasmExports.newString(bytes.length);
+                                for (let i = 0; i < bytes.length; i++) {{
+                                    window._wasmExports.string_set_byte(wasmStr, i, bytes[i]);
+                                }}
+                                return wasmStr;
+                            }} catch (e) {{
+                                console.warn('jsStringToWasm: Failed to create WASM string:', e);
+                            }}
+                        }}
+
+                        // No constructor found - return bytes as fallback
+                        console.warn('jsStringToWasm: No WASM string constructor found');
+                        return bytes;
+                    }};
+
                     // Helper to wrap GC objects with toString support
                     const wrapGcObject = function(obj) {{
                         if (!obj || typeof obj !== 'object') {{
@@ -319,20 +347,29 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                                 return value;
                             }},
                             set(target, prop, value) {{
-                                // Try to map field name to index for setters
-                                if (typeof prop === 'string') {{
+                                // Convert JS string to WASM string array if needed
+                                let wasmValue = value;
+                                if (typeof value === 'string' && typeof jsStringToWasm !== 'undefined') {{
+                                    wasmValue = jsStringToWasm(value);
+                                }}
+
+                                // Convert numeric index or string number to field name
+                                let fieldName = prop;
+                                const propNum = typeof prop === 'number' ? prop : parseInt(prop, 10);
+                                if (!isNaN(propNum)) {{
                                     const typeInfo = getTypeInfo();
                                     const fieldNames = (typeInfo && typeInfo.fields) ? typeInfo.fields : null;
-                                    if (fieldNames) {{
-                                        const index = fieldNames.indexOf(prop);
-                                        if (index !== -1) {{
-                                            target[index] = value;
-                                            return true;
-                                        }}
+                                    if (fieldNames && propNum >= 0 && propNum < fieldNames.length) {{
+                                        fieldName = fieldNames[propNum];
                                     }}
                                 }}
 
-                                target[prop] = value;
+                                // Try to set using WASM setter function
+                                if (typeof WasmGcStructSet !== 'undefined') {{
+                                    WasmGcStructSet(target, fieldName, wasmValue);
+                                }} else {{
+                                    target[prop] = wasmValue;
+                                }}
                                 return true;
 
                                 // TODO: Enforce field mutability
@@ -343,6 +380,9 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                             }}
                         }});
                     }};
+
+                    // Store all exports in _wasmExports for getter/setter functions
+                    window._wasmExports = result.instance.exports;
 
                     for (const name in result.instance.exports) {{
                         const exported = result.instance.exports[name];
@@ -443,6 +483,32 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                         }}
 
                         console.warn('WasmGcStructGet: Unable to access field', fieldIndex, 'on', structObj);
+                        return undefined;
+                    }};
+
+                    // Setter function for WASM GC struct fields
+                    window.WasmGcStructSet = function(structObj, fieldIndex, value) {{
+                        // Look for exported setter functions following common patterns
+                        const setterName = 'set_' + fieldIndex;
+                        if (window._wasmExports && window._wasmExports[setterName]) {{
+                            try {{
+                                return window._wasmExports[setterName](structObj, value);
+                            }} catch (e) {{
+                                console.warn('WasmGcStructSet: Setter', setterName, 'failed:', e);
+                            }}
+                        }}
+
+                        // Fallback: try numeric field access patterns
+                        const fieldSetter = 'struct_set_' + fieldIndex;
+                        if (window._wasmExports && window._wasmExports[fieldSetter]) {{
+                            try {{
+                                return window._wasmExports[fieldSetter](structObj, value);
+                            }} catch (e) {{
+                                console.warn('WasmGcStructSet: Setter', fieldSetter, 'failed:', e);
+                            }}
+                        }}
+
+                        console.warn('WasmGcStructSet: Unable to set field', fieldIndex, 'on', structObj);
                         return undefined;
                     }};
 

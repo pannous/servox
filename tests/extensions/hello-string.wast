@@ -7,4 +7,5 @@
   )
     (data $hello "hello")
   (global $box (export "box") (ref $Box) (array.new_data $string $hello (i32.const 5)) )
+  ;;(global $box (export "box") (ref $Box) (array.new_canon_data $string $hello (i32.const 5)) )
 )
