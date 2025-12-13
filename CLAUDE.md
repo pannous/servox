@@ -10,3 +10,7 @@
 - SessionStart hook automatically syncs with upstream servo/servo:main via sync-upstream.sh
 - mv test-* tests/extensions
 - The new binary name is servox
+## Binary Library Fixes (macOS)
+After each `./mach build`, run `./fix-libs.sh` to fix dynamic library paths.
+The issue: Rebuilds create new binaries without rpath to /opt/homebrew/lib.
+The script adds the rpath and creates version symlinks automatically.
