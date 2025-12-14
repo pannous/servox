@@ -148,16 +148,23 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                             return null;
                         }}
 
-                        // Try to read array as UTF-8 bytes
+                        // Use WASM helper functions to read array bytes
                         try {{
+                            // Get array length
+                            const len = window._wasmExports && window._wasmExports.string_len
+                                ? window._wasmExports.string_len(wasmStr)
+                                : 0;
+
+                            if (len === 0 || len > 10000) return null; // Safety limit
+
+                            // Read bytes using WASM getter
                             const bytes = [];
-                            let i = 0;
-                            while (true) {{
-                                const byte = wasmStr[i];
-                                if (byte === undefined) break;
-                                bytes.push(byte);
-                                i++;
-                                if (i > 10000) break; // Safety limit
+                            if (window._wasmExports && window._wasmExports.string_get_byte) {{
+                                for (let i = 0; i < len; i++) {{
+                                    bytes.push(window._wasmExports.string_get_byte(wasmStr, i));
+                                }}
+                            }} else {{
+                                return null;
                             }}
 
                             // Decode UTF-8 bytes to string
@@ -321,24 +328,26 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                                     return true;
                                 }}
 
-                                // Try to map field name to index
-                                if (typeof prop === 'string') {{
-                                    const typeInfo = getTypeInfo();
-                                    const fieldNames = (typeInfo && typeInfo.fields) ? typeInfo.fields : null;
-                                    if (fieldNames) {{
-                                        const index = fieldNames.indexOf(prop);
-                                        if (index !== -1) {{
-                                            const value = target[index];
-                                            // Auto-convert string arrays to JS strings
-                                            if (value && typeof value === 'object' && value[0] !== undefined && typeof value[0] === 'number' && value[0] >= 0 && value[0] <= 255) {{
-                                                return wasmStringToJs(value) || value;
-                                            }}
-                                            return value;
-                                        }}
+                                // Map numeric index to field name, or use string field name directly
+                                let fieldName = prop;
+                                const typeInfo = getTypeInfo();
+                                const fieldNames = (typeInfo && typeInfo.fields) ? typeInfo.fields : null;
+
+                                // Convert numeric index to field name
+                                const propNum = typeof prop === 'number' ? prop : parseInt(prop, 10);
+                                if (!isNaN(propNum) && fieldNames && propNum >= 0 && propNum < fieldNames.length) {{
+                                    fieldName = fieldNames[propNum];
+                                }}
+
+                                // Try to get value using WASM getter function
+                                if (typeof WasmGcStructGet !== 'undefined') {{
+                                    const value = WasmGcStructGet(target, fieldName);
+                                    if (value !== undefined) {{
+                                        return value;
                                     }}
                                 }}
 
-                                // Handle numeric property access
+                                // Fallback: direct property access
                                 const value = target[prop];
                                 // Auto-convert string arrays to JS strings
                                 if (value && typeof value === 'object' && value[0] !== undefined && typeof value[0] === 'number' && value[0] >= 0 && value[0] <= 255) {{
@@ -455,7 +464,16 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                         const getterName = 'get_' + fieldIndex;
                         if (window._wasmExports && window._wasmExports[getterName]) {{
                             try {{
-                                return window._wasmExports[getterName](structObj);
+                                const value = window._wasmExports[getterName](structObj);
+                                // Try to convert to JS string if it's a WASM string array
+                                if (value && typeof value === 'object') {{
+                                    const jsStr = wasmStringToJs(value);
+                                    if (jsStr !== null) {{
+                                        return jsStr;
+                                    }}
+                                }}
+                                // Not a string array - wrap as GC object
+                                return wrapGcObject(value);
                             }} catch (e) {{
                                 console.warn('WasmGcStructGet: Getter', getterName, 'failed:', e);
                             }}
@@ -465,7 +483,16 @@ pub fn compile_wat_to_js(source: &str, filename: &str, callback: Option<&str>) -
                         const fieldGetter = 'struct_get_' + fieldIndex;
                         if (window._wasmExports && window._wasmExports[fieldGetter]) {{
                             try {{
-                                return window._wasmExports[fieldGetter](structObj);
+                                const value = window._wasmExports[fieldGetter](structObj);
+                                // Try to convert to JS string if it's a WASM string array
+                                if (value && typeof value === 'object') {{
+                                    const jsStr = wasmStringToJs(value);
+                                    if (jsStr !== null) {{
+                                        return jsStr;
+                                    }}
+                                }}
+                                // Not a string array - wrap as GC object
+                                return wrapGcObject(value);
                             }} catch (e) {{
                                 console.warn('WasmGcStructGet: Getter', fieldGetter, 'failed:', e);
                             }}

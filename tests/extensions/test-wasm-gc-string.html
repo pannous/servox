@@ -30,33 +30,45 @@
     struct.new $Box
   )
 
-  ;; Getter for box.val field (field index 0)
+  ;; Getter for box.val field
   (func (export "get_val") (param $box (ref $Box)) (result (ref $string))
     local.get $box
     struct.get $Box $val
   )
 
-  ;; Setter for box.val field (field index 0)
+  ;; Setter for box.val field
   (func (export "set_val") (param $box (ref $Box)) (param $newval (ref $string))
     local.get $box
     local.get $newval
     struct.set $Box $val
   )
 
-  ;; String constructor helper - create from length and fill with zeros
-  ;; JS will need to fill it byte by byte
+  ;; String constructor - create array from length
   (func (export "newString") (param $length i32) (result (ref $string))
-    i32.const 0  ;; Fill value
-    local.get $length  ;; Count
+    i32.const 0
+    local.get $length
     array.new $string
   )
 
-  ;; Set a byte in a string array
+  ;; Get byte from string array
+  (func (export "string_get_byte") (param $str (ref $string)) (param $index i32) (result i32)
+    local.get $str
+    local.get $index
+    array.get_u $string
+  )
+
+  ;; Set byte in string array
   (func (export "string_set_byte") (param $str (ref $string)) (param $index i32) (param $value i32)
-    (local.get $str)
-    (local.get $index)
-    (local.get $value)
-    (array.set $string)
+    local.get $str
+    local.get $index
+    local.get $value
+    array.set $string
+  )
+
+  ;; Get string length
+  (func (export "string_len") (param $str (ref $string)) (result i32)
+    local.get $str
+    array.len
   )
 
   (start $init)
@@ -81,23 +93,23 @@
         log('❌ Error: ' + e.message);
       }
 
-      // Test box[0] access
-      log('box[0] = ' + box[0]);
+      // Test box.val access
+      log('box.val = ' + box.val);
 
-      if ( box[0] != "hello" ) {
-        log('❌ Error: box[0] expected "hello", got ' + box[0]);
+      if ( box.val != "hello" ) {
+        log('❌ Error: box.val expected "hello", got ' + box.val);
       } else {
-        log('✅ box[0] correctly returned "hello"');
+        log('✅ box.val correctly returned "hello"');
       }
 
       
 
       // Test setting
-      box[0] = "hi";
-      log('After set, box[0] = ' + box[0]);
+      box.val = "hi";
+      log('After set, box.val = ' + box.val);
 
       const box2 = window.newBox("hi");
-      log('After new box2[0] = ' + box2[0]);
+      log('After new box2.val = ' + box2.val);
 
     }, 500);
   </script>
