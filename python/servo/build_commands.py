@@ -216,6 +216,16 @@ class MachCommands(CommandBase):
                 if not package_gstreamer_dylibs(built_binary, library_target_directory, self.target):
                     return 1
 
+            # Fix dynamic library paths on macOS
+            fix_libs_script = path.join(self.get_top_dir(), "fix-libs.sh")
+            if os.path.exists(fix_libs_script):
+                print("Running fix-libs.sh to fix dynamic library paths...")
+                try:
+                    subprocess.run([fix_libs_script], check=True, cwd=self.get_top_dir())
+                except subprocess.CalledProcessError as e:
+                    print(f"Warning: fix-libs.sh failed: {e}")
+                    # Don't fail the build, just warn
+
             # On the Mac, set a lovely icon. This makes it easier to pick out the Servo binary in tools
             # like Instruments.app.
             try:
