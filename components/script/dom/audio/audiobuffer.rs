@@ -6,7 +6,8 @@ use std::cmp::min;
 
 use dom_struct::dom_struct;
 use js::rust::{CustomAutoRooterGuard, HandleObject};
-use js::typedarray::{Float32, Float32Array};
+use js::typedarray::{Float32, Float32Array, HeapFloat32Array};
+use script_bindings::trace::RootedTraceableBox;
 use servo_media::audio::buffer_source_node::AudioBuffer as ServoMediaAudioBuffer;
 
 use crate::dom::audio::audionode::MAX_CHANNEL_COUNT;
@@ -133,7 +134,7 @@ impl AudioBuffer {
 
     fn restore_js_channel_data(&self, cx: JSContext, can_gc: CanGc) -> bool {
         let _ac = enter_realm(self);
-        for (i, channel) in self.js_channels.borrow_mut().iter().enumerate() {
+        for (i, channel) in self.js_channels.borrow().iter().enumerate() {
             if channel.is_initialized() {
                 // Already have data in JS array.
                 continue;
@@ -238,7 +239,12 @@ impl AudioBufferMethods<crate::DomTypeHolder> for AudioBuffer {
     }
 
     /// <https://webaudio.github.io/web-audio-api/#dom-audiobuffer-getchanneldata>
-    fn GetChannelData(&self, cx: JSContext, channel: u32, can_gc: CanGc) -> Fallible<Float32Array> {
+    fn GetChannelData(
+        &self,
+        cx: JSContext,
+        channel: u32,
+        can_gc: CanGc,
+    ) -> Fallible<RootedTraceableBox<HeapFloat32Array>> {
         if channel >= self.number_of_channels {
             return Err(Error::IndexSize(None));
         }
