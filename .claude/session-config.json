@@ -7,5 +7,9 @@
   "48d4847d-48ff-4401-ab7a-a75150791156": {
     "permissionMode": "bypassPermissions",
     "cwd": "/opt/other/servo-light"
+  },
+  "1100e87c-ff11-464b-abae-30d6c41d31b7": {
+    "permissionMode": "bypassPermissions",
+    "cwd": "/opt/other/servo-light"
   }
 }
